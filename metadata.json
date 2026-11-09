@@ -1,0 +1,6 @@
+{
+  "name": "MedSync SaaS - Gestão de Clínicas Médicas",
+  "description": "Plataforma SaaS multi-tenant e multiunidade para gestão de clínicas médicas, agendamento, prontuário eletrônico, comunicação e sites institucionais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

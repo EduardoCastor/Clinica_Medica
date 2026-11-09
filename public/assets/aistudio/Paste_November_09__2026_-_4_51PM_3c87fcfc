@@ -1,0 +1,947 @@
+# PROJETO: PLATAFORMA SAAS DE GESTÃO DE CLÍNICAS MÉDICAS
+
+## 1. PAPEL E OBJETIVO
+
+Atue como um arquiteto de software sênior, especialista em SaaS, sistemas médicos, aplicações web e mobile, UX/UI, bancos de dados PostgreSQL, Supabase, segurança da informação e integração de serviços.
+
+Sua missão é projetar e desenvolver uma plataforma SaaS completa para gestão de clínicas médicas, com arquitetura multi-tenant (multiclínica), multiunidade e possibilidade de expansão comercial.
+
+O sistema deverá atender diversas clínicas simultaneamente, permitindo que cada cliente tenha seu próprio ambiente, identidade visual, usuários, profissionais, pacientes, unidades, configurações e informações.
+
+A aplicação deverá ser moderna, responsiva, segura, intuitiva e preparada para crescimento comercial.
+
+Não desenvolva apenas um protótipo visual. Desenvolva uma aplicação funcional, com frontend, backend, banco de dados, autenticação, regras de negócio, integrações e persistência real das informações.
+
+## 2. TECNOLOGIAS E INFRAESTRUTURA
+
+Utilize preferencialmente:
+
+- Google AI Studio para desenvolvimento assistido da aplicação.
+- React com TypeScript para frontend.
+- Framework e ferramentas compatíveis com o ambiente de execução do Google AI Studio.
+- Supabase como backend e banco de dados.
+- PostgreSQL como banco de dados relacional.
+- Supabase Auth para autenticação.
+- Supabase Storage para armazenamento de arquivos.
+- Supabase Edge Functions para operações sensíveis e integrações.
+- GitHub para versionamento e armazenamento dos arquivos-fonte.
+- Arquitetura PWA para proporcionar experiência mobile e possibilidade de instalação no celular.
+
+A arquitetura deverá separar adequadamente frontend, backend, serviços, componentes, regras de negócio e acesso aos dados.
+
+Não armazenar informações sensíveis no navegador sem necessidade.
+
+Não expor chaves privadas, service role keys ou credenciais no frontend.
+
+Toda operação sensível deverá ser validada no servidor.
+
+O código deverá ser organizado, documentado, modular e preparado para manutenção e evolução.
+
+## 3. ARQUITETURA MULTICLÍNICA E MULTIFILIAL
+
+Este é um dos requisitos mais importantes do projeto.
+
+A plataforma deverá possuir uma estrutura hierárquica:
+
+- Plataforma SaaS.
+- Clínica cliente.
+- Filiais da clínica.
+- Profissionais.
+- Funcionários.
+- Pacientes.
+- Agendas.
+- Prontuários.
+- Documentos.
+- Procedimentos.
+- Financeiro.
+
+Uma clínica poderá possuir uma ou várias filiais.
+
+Cada filial deverá possuir seus próprios dados operacionais, incluindo:
+
+- Endereço.
+- Telefone.
+- Horários de funcionamento.
+- Profissionais vinculados.
+- Salas e recursos.
+- Agendas.
+- Serviços oferecidos.
+- Configurações específicas.
+
+### 3.1. Compartilhamento de pacientes entre filiais
+
+O sistema deverá permitir dois modelos de gerenciamento de pacientes:
+
+**Modelo A — Pacientes exclusivos da filial**
+
+O paciente será cadastrado e acessível exclusivamente pela filial responsável, conforme as permissões estabelecidas.
+
+**Modelo B — Pacientes compartilhados entre filiais**
+
+O paciente poderá ser atendido em diferentes unidades da mesma clínica, permitindo acesso compartilhado às informações autorizadas.
+
+O compartilhamento deverá ser configurável individualmente por clínica e, quando necessário, por paciente.
+
+Deverá existir controle sobre:
+
+- Quais filiais podem visualizar o cadastro.
+- Quais filiais podem visualizar o histórico de atendimentos.
+- Quais profissionais podem acessar o prontuário.
+- Quais usuários podem incluir ou alterar informações.
+- Quais documentos podem ser compartilhados.
+
+Não permitir compartilhamento automático entre clínicas diferentes.
+
+O compartilhamento deverá ocorrer somente dentro da organização proprietária dos dados e respeitar as permissões e autorizações aplicáveis.
+
+### 3.2. Isolamento de dados
+
+Implemente arquitetura multi-tenant utilizando identificadores de organização em todas as entidades relevantes.
+
+Utilize Row Level Security (RLS) no Supabase para garantir o isolamento dos dados.
+
+As políticas deverão impedir que usuários de uma clínica visualizem informações de outra clínica, mesmo que tentem acessar diretamente os endpoints ou modificar parâmetros da aplicação.
+
+Nunca confie exclusivamente nos filtros aplicados pelo frontend.
+
+## 4. GESTÃO COMERCIAL DA PLATAFORMA SAAS
+
+A plataforma deverá possuir um site comercial próprio, destinado à divulgação, aquisição e contratação do sistema.
+
+Esse site deverá apresentar:
+
+- Apresentação da plataforma.
+- Benefícios.
+- Funcionalidades.
+- Diferenciais.
+- Planos e preços.
+- Demonstração do sistema.
+- Cadastro de novas clínicas.
+- Login.
+- Contato comercial.
+- Perguntas frequentes.
+- Termos de uso.
+- Política de privacidade.
+
+### 4.1. Planos comerciais
+
+Criar três modalidades de contratação.
+
+**PLANO TESTE GRÁTIS**
+
+- Duração de 10 dias.
+- Acesso experimental às funcionalidades definidas para o plano.
+- Cadastro da clínica.
+- Cadastro de filiais.
+- Cadastro de profissionais.
+- Cadastro de pacientes.
+- Agendamento.
+- Demonstração da comunicação com pacientes.
+- Acesso ao painel administrativo.
+- Avisos sobre o término do período de avaliação.
+- Conversão para um plano pago.
+
+**PLANO BÁSICO**
+
+Deverá oferecer as funcionalidades essenciais para clínicas de pequeno porte.
+
+Permitir configuração dos limites de:
+- Número de usuários.
+- Número de filiais.
+- Número de pacientes.
+- Recursos de agendamento.
+- Comunicação.
+- Armazenamento.
+
+**PLANO AVANÇADO**
+
+Deverá oferecer recursos ampliados para clínicas com maior estrutura.
+
+Considerar:
+- Múltiplas filiais.
+- Compartilhamento de pacientes.
+- Recursos avançados de comunicação.
+- Relatórios gerenciais.
+- Indicadores.
+- Gestão avançada de usuários e permissões.
+- Automações.
+- Recursos adicionais de integração.
+
+Os preços, limites e funcionalidades de cada plano deverão ser configuráveis pelo administrador da plataforma, sem necessidade de alterações no código.
+
+### 4.2. Gestão das assinaturas
+
+Criar painel administrativo para:
+
+- Cadastrar e editar planos.
+- Definir preços.
+- Definir limites.
+- Gerenciar períodos de teste.
+- Consultar assinaturas.
+- Identificar assinaturas vencidas.
+- Suspender e reativar contas.
+- Consultar histórico de pagamentos.
+- Acompanhar conversões do período de teste.
+- Visualizar indicadores comerciais.
+
+Não inventar preços ou limites definitivos. Criar configurações editáveis.
+
+Preparar arquitetura para integração com gateway de pagamento, deixando a escolha do provedor configurável.
+
+## 5. PAINEL ADMINISTRATIVO DO SAAS
+
+Criar um ambiente exclusivo para o administrador geral da plataforma.
+
+Funcionalidades:
+
+- Dashboard geral.
+- Cadastro de clínicas clientes.
+- Cadastro de planos.
+- Controle de assinaturas.
+- Controle de pagamentos.
+- Gestão de períodos de teste.
+- Gestão de usuários.
+- Controle de utilização.
+- Relatórios de crescimento.
+- Indicadores de clientes ativos e inativos.
+- Histórico de operações.
+- Monitoramento de erros e integrações.
+
+O administrador geral não deverá ter acesso irrestrito aos prontuários e dados clínicos dos pacientes. Eventual acesso excepcional deverá ser controlado, justificado e auditável.
+
+## 6. CADASTRO E CONFIGURAÇÃO DA CLÍNICA
+
+Cada clínica deverá possuir um ambiente administrativo próprio.
+
+Permitir cadastrar:
+
+- Razão social.
+- Nome fantasia.
+- CNPJ.
+- Inscrição municipal, quando aplicável.
+- Endereço.
+- Telefones.
+- E-mail.
+- Logotipo.
+- Responsáveis.
+- Dados de contato.
+- Especialidades.
+- Serviços oferecidos.
+- Horários de funcionamento.
+- Redes sociais.
+- Informações institucionais.
+
+Permitir cadastrar várias filiais vinculadas à mesma clínica.
+
+Cada filial poderá ter profissionais, agendas, salas, serviços e horários próprios.
+
+## 7. GESTÃO DE USUÁRIOS E PERMISSÕES
+
+Implementar controle de acesso baseado em papéis e permissões (RBAC).
+
+Perfis iniciais:
+
+- Administrador da plataforma.
+- Administrador da clínica.
+- Administrador da filial.
+- Médico.
+- Fisioterapeuta.
+- Profissional de saúde.
+- Recepcionista.
+- Financeiro.
+- Gestor.
+- Paciente.
+
+As permissões deverão ser configuráveis.
+
+Exemplos:
+
+O médico poderá acessar os pacientes e prontuários autorizados.
+
+A recepção poderá realizar agendamentos e consultar informações cadastrais, sem necessariamente ter acesso a informações clínicas restritas.
+
+O financeiro poderá visualizar informações financeiras, sem acesso automático aos prontuários.
+
+O administrador da clínica poderá configurar as unidades e usuários respeitando os limites do plano contratado.
+
+## 8. CADASTRO E GESTÃO DE PACIENTES
+
+Criar cadastro completo de pacientes.
+
+Campos:
+
+- Nome completo.
+- CPF.
+- Data de nascimento.
+- Sexo, quando necessário.
+- Telefone.
+- WhatsApp.
+- E-mail.
+- Endereço.
+- Contato de emergência.
+- Responsável legal, quando aplicável.
+- Observações administrativas.
+- Origem do paciente.
+- Data de cadastro.
+- Filial de referência.
+
+Permitir:
+
+- Pesquisa por nome.
+- Pesquisa por CPF.
+- Pesquisa por telefone.
+- Histórico de atendimentos.
+- Histórico de agendamentos.
+- Documentos.
+- Anexos.
+- Consentimentos.
+- Histórico de comunicação.
+- Identificação da filial responsável.
+
+Evitar duplicidade de cadastros e permitir identificar possíveis pacientes já existentes.
+
+O sistema deverá suportar compartilhamento autorizado de pacientes entre filiais.
+
+## 9. PRONTUÁRIO ELETRÔNICO
+
+Desenvolver módulo de prontuário eletrônico, com controle rigoroso de acesso.
+
+Permitir:
+
+- Histórico clínico.
+- Anamnese.
+- Queixa principal.
+- Histórico de saúde.
+- Evolução clínica.
+- Avaliações.
+- Diagnósticos registrados pelo profissional.
+- Prescrições.
+- Solicitações de exames.
+- Resultados de exames.
+- Documentos anexados.
+- Plano terapêutico.
+- Registro de procedimentos.
+- Evolução por atendimento.
+
+Registrar autor, data e horário das alterações.
+
+Implementar histórico de versões e trilha de auditoria.
+
+Documentos clínicos deverão ser armazenados de forma segura no Supabase Storage, com controle de acesso.
+
+Não permitir que usuários não autorizados alterem registros clínicos.
+
+## 10. AGENDAMENTO — FUNCIONALIDADE PRIORITÁRIA
+
+O agendamento deverá ser um dos módulos mais completos da plataforma.
+
+Desenvolver agenda visual e intuitiva, com visualizações:
+
+- Diária.
+- Semanal.
+- Mensal.
+- Por profissional.
+- Por filial.
+- Por especialidade.
+- Por sala.
+
+Permitir:
+
+- Criar agendamento.
+- Reagendar.
+- Cancelar.
+- Confirmar presença.
+- Registrar chegada.
+- Registrar atendimento.
+- Registrar ausência.
+- Criar encaixes.
+- Criar recorrências.
+- Configurar intervalos.
+- Bloquear horários.
+- Definir duração dos atendimentos.
+- Definir disponibilidade dos profissionais.
+- Configurar feriados.
+- Gerenciar salas e recursos.
+
+Impedir conflitos de horários e reservas duplicadas, utilizando validações no backend e restrições adequadas no banco de dados.
+
+### 10.1. Agendamento online
+
+Criar funcionalidade para que o paciente possa solicitar ou realizar agendamento pelo site da clínica.
+
+O paciente deverá poder:
+
+1. Escolher a especialidade.
+2. Escolher o profissional, quando aplicável.
+3. Escolher a filial.
+4. Consultar horários disponíveis.
+5. Selecionar o horário.
+6. Informar seus dados.
+7. Confirmar a solicitação.
+8. Receber confirmação ou instruções.
+
+A clínica poderá definir se o agendamento será confirmado automaticamente ou dependerá de aprovação da recepção.
+
+### 10.2. Lista de espera
+
+Criar lista de espera para pacientes interessados em horários indisponíveis.
+
+Quando houver cancelamento, permitir identificar pacientes interessados e notificar os responsáveis para preenchimento do horário.
+
+## 11. COMUNICAÇÃO COM PACIENTES
+
+Este é outro requisito prioritário.
+
+Criar módulo centralizado de comunicação.
+
+Preparar integração com WhatsApp Business API, e-mail e outros canais que possam ser adicionados futuramente.
+
+Não utilizar integrações não oficiais ou mecanismos que violem as políticas dos provedores.
+
+### 11.1. Mensagens automáticas
+
+Permitir configurar mensagens para:
+
+- Confirmação de agendamento.
+- Lembrete de consulta.
+- Confirmação de presença.
+- Reagendamento.
+- Cancelamento.
+- Aviso de alteração de horário.
+- Orientações pré-atendimento.
+- Acompanhamento pós-atendimento.
+- Retorno de consulta.
+- Aniversário.
+- Paciente sem retorno.
+- Recuperação de pacientes inativos.
+
+Permitir configurar antecedência e condições de disparo.
+
+Exemplos:
+
+- Lembrete 48 horas antes.
+- Lembrete 24 horas antes.
+- Lembrete no dia do atendimento.
+
+Os intervalos deverão ser editáveis.
+
+### 11.2. Central de comunicação
+
+Criar uma tela para visualizar:
+
+- Histórico de mensagens.
+- Mensagens enviadas.
+- Mensagens recebidas.
+- Status de entrega.
+- Falhas.
+- Conversas.
+- Paciente relacionado.
+- Canal utilizado.
+- Responsável pelo atendimento.
+
+Permitir criação de modelos de mensagens.
+
+Permitir personalização dos textos com variáveis, como:
+
+{{nome_paciente}}
+{{nome_clinica}}
+{{nome_profissional}}
+{{data_consulta}}
+{{horario_consulta}}
+{{endereco_filial}}
+
+Respeitar consentimentos, preferências de comunicação e regras de privacidade.
+
+Mensagens clínicas sensíveis não deverão ser enviadas automaticamente sem autorização e validação adequadas.
+
+## 12. MÓDULO FINANCEIRO
+
+Criar módulo financeiro para controle da clínica.
+
+Funcionalidades:
+
+- Cadastro de serviços.
+- Cadastro de preços.
+- Contas a receber.
+- Pagamentos.
+- Formas de pagamento.
+- Parcelamentos.
+- Descontos.
+- Recibos.
+- Histórico financeiro do paciente.
+- Relatórios.
+- Fluxo de caixa.
+- Indicadores por filial.
+- Indicadores por profissional.
+
+Permitir diferenciar os dados financeiros da clínica cliente dos dados de assinatura da plataforma SaaS.
+
+## 13. SITE INDIVIDUAL DE CADA CLÍNICA
+
+Cada clínica cliente deverá ter a possibilidade de gerar um site institucional próprio, integrado ao sistema.
+
+O site deverá ser gerado automaticamente com base nos dados cadastrados pela clínica.
+
+Permitir:
+
+- Nome e identidade visual.
+- Logotipo.
+- Imagens.
+- Apresentação institucional.
+- Especialidades.
+- Profissionais.
+- Serviços.
+- Filiais.
+- Endereços.
+- Telefones.
+- Botões de contato.
+- Integração com WhatsApp.
+- Formulário de contato.
+- Solicitação de agendamento.
+- Agendamento online.
+- Redes sociais.
+- SEO.
+- Informações de funcionamento.
+
+### 13.1. Personalização visual
+
+Disponibilizar pelo menos cinco paletas de cores pré-configuradas.
+
+Criar as seguintes opções iniciais:
+
+1. Azul-clínico: azul-marinho, azul-claro e branco.
+2. Verde-saúde: verde-escuro, verde-suave e branco.
+3. Elegância: grafite, dourado suave e branco.
+4. Minimalista: cinza, branco e azul acinzentado.
+5. Natural: verde-oliva, bege e tons terrosos.
+
+A clínica poderá visualizar uma prévia antes de aplicar a paleta.
+
+Permitir personalização de logotipo, imagens, fontes e cores complementares.
+
+Garantir boa legibilidade, acessibilidade e consistência visual.
+
+### 13.2. Endereços dos sites
+
+Preparar suporte para:
+
+- Subdomínio da plataforma.
+- Domínio próprio da clínica.
+- Configuração de DNS.
+- Certificado HTTPS.
+
+Exemplo:
+
+clinica.plataforma.com.br
+
+www.clinicax.com.br
+
+Cada site deverá carregar exclusivamente os dados públicos da respectiva clínica.
+
+## 14. IDENTIDADE INSTITUCIONAL DA PRIMEIRA CLÍNICA
+
+Utilizar o documento de visão geral fornecido como referência para criar o conteúdo institucional da primeira clínica cliente.
+
+A clínica possui uma abordagem baseada na medicina ortomolecular, com foco na recuperação da saúde por meio da identificação e correção de alterações metabólicas, nutricionais, químicas e fisiológicas.
+
+O conteúdo institucional deverá contemplar:
+
+- Filosofia da medicina ortomolecular.
+- Saúde metabólica.
+- Endocrinologia.
+- Metabologia.
+- Clínica médica.
+- Fisioterapia.
+- Lipedema.
+- Sarcopenia.
+- Suporte hormonal.
+- Preservação da massa muscular.
+- Saúde integral.
+- Emagrecimento como possível consequência da melhora da saúde metabólica.
+
+Considerar as informações sobre o Dr. Newton e o fisioterapeuta descritas no documento.
+
+O site deverá transmitir uma imagem de profissionalismo, confiança, acolhimento, ciência e cuidado individualizado.
+
+A comunicação deverá enfatizar que o objetivo é promover a saúde e não apenas tratar sintomas.
+
+Não criar promessas de resultados, garantias de emagrecimento ou alegações de cura.
+
+Informações sobre medicamentos, tratamentos e riscos deverão ser apresentadas de forma responsável, sem substituir avaliação médica individualizada.
+
+Os textos institucionais deverão ser editáveis pela própria clínica.
+
+## 15. DASHBOARD E INDICADORES
+
+Criar dashboards distintos para os diferentes perfis.
+
+### Dashboard da clínica
+
+Apresentar:
+
+- Consultas do dia.
+- Próximos agendamentos.
+- Consultas confirmadas.
+- Consultas pendentes.
+- Cancelamentos.
+- Faltas.
+- Pacientes novos.
+- Retornos pendentes.
+- Taxa de comparecimento.
+- Indicadores financeiros.
+- Desempenho por filial.
+- Desempenho por profissional.
+
+### Dashboard da recepção
+
+Apresentar:
+
+- Agenda do dia.
+- Pacientes aguardando.
+- Confirmações pendentes.
+- Cancelamentos.
+- Lista de espera.
+- Mensagens pendentes.
+
+### Dashboard do profissional
+
+Apresentar:
+
+- Agenda pessoal.
+- Próximos atendimentos.
+- Histórico dos pacientes autorizados.
+- Evoluções pendentes.
+- Retornos recomendados.
+
+## 16. PORTAL DO PACIENTE
+
+Criar área exclusiva para pacientes.
+
+Permitir:
+
+- Cadastro e atualização de dados.
+- Consulta de agendamentos.
+- Solicitação de agendamento.
+- Cancelamento conforme regras da clínica.
+- Solicitação de reagendamento.
+- Consulta de documentos disponibilizados.
+- Recebimento de comunicados.
+- Atualização de preferências de comunicação.
+
+Acesso mediante autenticação segura.
+
+Não disponibilizar prontuários ou documentos clínicos sem controle de autorização.
+
+## 17. APLICATIVO MOBILE
+
+A aplicação deverá funcionar muito bem em dispositivos móveis.
+
+Desenvolver uma experiência mobile-first, com:
+
+- Menu adaptado.
+- Navegação simplificada.
+- Agenda mobile.
+- Cadastro de pacientes.
+- Consulta de informações.
+- Comunicação.
+- Notificações.
+- Dashboard adaptado.
+- Portal do paciente.
+
+Na primeira versão, priorizar uma PWA instalável em Android e iOS, com experiência semelhante à de um aplicativo.
+
+Organizar a arquitetura para permitir a criação futura de aplicativos nativos, caso necessário.
+
+## 18. SEGURANÇA, LGPD E AUDITORIA
+
+O sistema trabalhará com dados pessoais e dados pessoais sensíveis de saúde.
+
+A segurança deverá ser tratada como requisito fundamental.
+
+Implementar:
+
+- Conformidade com a LGPD.
+- Controle de acesso por perfil.
+- Isolamento entre clínicas.
+- RLS em todas as tabelas pertinentes.
+- Autenticação segura.
+- Recuperação de senha.
+- Registro de consentimentos.
+- Gestão de permissões.
+- Auditoria de acessos.
+- Histórico de alterações.
+- Proteção de arquivos.
+- URLs assinadas para documentos privados.
+- Validação de dados.
+- Proteção contra acessos indevidos.
+- Política de retenção de dados.
+- Rotinas de backup e recuperação.
+- Registro de operações sensíveis.
+
+Implementar controle de acesso mínimo necessário.
+
+Preparar mecanismos para atendimento aos direitos dos titulares de dados.
+
+Não considerar que o simples aceite dos termos de uso substitui todas as bases legais e autorizações necessárias.
+
+## 19. ESTRUTURA DO BANCO DE DADOS SUPABASE
+
+Desenvolver um banco de dados relacional, normalizado e escalável.
+
+Criar migrations SQL versionadas.
+
+Considerar, inicialmente, as seguintes entidades:
+
+- organizations
+- clinics
+- branches
+- users
+- user_profiles
+- roles
+- permissions
+- user_roles
+- subscriptions
+- plans
+- plan_features
+- patients
+- patient_branch_access
+- professionals
+- specialties
+- services
+- rooms
+- schedules
+- appointments
+- appointment_status_history
+- medical_records
+- medical_record_entries
+- prescriptions
+- exams
+- documents
+- patient_consents
+- communication_channels
+- message_templates
+- messages
+- notification_jobs
+- financial_transactions
+- invoices
+- audit_logs
+- websites
+- website_themes
+- website_pages
+- website_domains
+
+Avaliar relacionamentos, cardinalidade, integridade referencial, índices e restrições antes da implementação definitiva.
+
+Todas as tabelas relevantes deverão conter os campos de identificação da organização e, quando aplicável, da filial.
+
+Criar políticas RLS para cada tabela.
+
+Criar triggers e funções somente quando houver necessidade justificada.
+
+Documentar o modelo de dados.
+
+Não criar tabelas duplicadas para funcionalidades que possam ser representadas adequadamente por relacionamentos.
+
+## 20. INTEGRAÇÕES E AUTOMAÇÕES
+
+Preparar arquitetura para integração com:
+
+- WhatsApp Business API.
+- Serviço de e-mail transacional.
+- Gateway de pagamento.
+- Google Calendar, quando habilitado.
+- Serviços de assinatura digital, quando habilitados.
+- Serviços de armazenamento e processamento de documentos.
+
+As integrações deverão possuir configurações próprias por clínica, quando aplicável.
+
+Criar camada de abstração para que um provedor possa ser substituído sem reconstruir toda a aplicação.
+
+Registrar erros, tentativas e status das integrações.
+
+## 21. INTERFACE E EXPERIÊNCIA DO USUÁRIO
+
+Adotar identidade visual moderna, profissional e acolhedora.
+
+Referências visuais:
+
+- Sistemas SaaS profissionais.
+- Softwares modernos de gestão médica.
+- Interfaces limpas.
+- Navegação intuitiva.
+- Menus laterais.
+- Cards informativos.
+- Tabelas funcionais.
+- Calendários visuais.
+- Formulários organizados.
+- Tipografia legível.
+
+Utilizar ícones consistentes.
+
+Garantir responsividade para desktop, tablet e smartphone.
+
+Evitar excesso de informações na mesma tela.
+
+Priorizar rapidez de operação para recepcionistas e profissionais.
+
+Criar estados de carregamento, mensagens de erro, confirmações e estados vazios.
+
+Toda interface deverá possuir textos em português brasileiro.
+
+## 22. VERSIONAMENTO E GITHUB
+
+Organizar todo o código-fonte em um repositório GitHub.
+
+Estrutura sugerida:
+
+/src
+  /components
+  /pages
+  /layouts
+  /modules
+    /auth
+    /clinics
+    /branches
+    /patients
+    /medical-records
+    /appointments
+    /communication
+    /financial
+    /subscriptions
+    /websites
+  /services
+  /hooks
+  /contexts
+  /types
+  /utils
+
+/supabase
+  /migrations
+  /functions
+  /seed
+
+/docs
+  architecture.md
+  database.md
+  security.md
+  integrations.md
+  deployment.md
+
+Criar documentação para instalação, configuração e publicação.
+
+Utilizar variáveis de ambiente.
+
+Disponibilizar arquivo .env.example sem credenciais reais.
+
+Não versionar segredos, chaves privadas ou dados reais de pacientes.
+
+## 23. ESTRATÉGIA DE DESENVOLVIMENTO
+
+Não tente construir todo o sistema em uma única etapa sem validar a arquitetura.
+
+Desenvolva por fases, mantendo a aplicação executável ao final de cada fase.
+
+### FASE 1 — FUNDAÇÃO
+
+- Arquitetura geral.
+- Estrutura do projeto.
+- Conexão Supabase.
+- Autenticação.
+- Multi-tenant.
+- Cadastro da clínica.
+- Cadastro de filiais.
+- Controle de usuários.
+- RLS.
+
+### FASE 2 — OPERAÇÃO CLÍNICA
+
+- Cadastro de pacientes.
+- Compartilhamento entre filiais.
+- Profissionais.
+- Especialidades.
+- Serviços.
+- Agenda.
+- Agendamentos.
+- Prontuário.
+
+### FASE 3 — COMUNICAÇÃO
+
+- Integração WhatsApp.
+- E-mails.
+- Modelos de mensagens.
+- Lembretes automáticos.
+- Histórico de comunicação.
+- Lista de espera.
+
+### FASE 4 — COMERCIALIZAÇÃO SAAS
+
+- Site comercial.
+- Cadastro de clínicas.
+- Planos.
+- Período de teste.
+- Assinaturas.
+- Controle de limites.
+- Gestão administrativa.
+
+### FASE 5 — SITES INDIVIDUAIS
+
+- Gerador de sites.
+- Paletas de cores.
+- Personalização.
+- Conteúdo institucional.
+- Agendamento online.
+- Domínios próprios.
+
+### FASE 6 — MOBILE E EXPANSÃO
+
+- PWA.
+- Portal do paciente.
+- Notificações.
+- Melhorias de usabilidade.
+- Relatórios.
+- Integrações adicionais.
+
+## 24. REGRAS OBRIGATÓRIAS DE EXECUÇÃO
+
+1. Antes de programar, apresente a arquitetura proposta e o modelo de dados.
+2. Identifique dependências e integrações externas.
+3. Não invente credenciais ou configurações do Supabase.
+4. Solicite os dados de conexão quando forem necessários.
+5. Não crie funcionalidades apenas visuais sem implementar sua lógica.
+6. Não utilize dados fictícios como se fossem dados reais.
+7. Quando utilizar dados de demonstração, identificá-los claramente.
+8. Implemente validações no frontend e backend.
+9. Implemente segurança antes de liberar acesso a dados reais.
+10. Teste isolamento entre clínicas e filiais.
+11. Teste os fluxos completos de agendamento.
+12. Teste o envio e o registro das mensagens.
+13. Não deixe botões sem funcionamento.
+14. Não simule integrações que ainda não foram configuradas.
+15. Documente funcionalidades pendentes e dependências externas.
+16. Preserve a compatibilidade do código com o ambiente de desenvolvimento.
+17. Faça commits organizados no GitHub.
+18. Não substitua funcionalidades existentes sem avaliar os impactos.
+19. Ao finalizar cada fase, apresente o que foi implementado, o que foi testado e o que falta.
+20. Nunca exponha dados de uma clínica para outra.
+
+## 25. PRIMEIRA ENTREGA
+
+Comece pela análise e arquitetura do projeto.
+
+Apresente:
+
+1. Visão geral da arquitetura.
+2. Diagrama dos módulos.
+3. Modelo de relacionamento do banco de dados.
+4. Estratégia multi-tenant.
+5. Estratégia de segurança e RLS.
+6. Estrutura do repositório.
+7. Plano de desenvolvimento por fases.
+8. Dependências externas.
+9. Principais riscos técnicos.
+
+Após apresentar a arquitetura, inicie a FASE 1.
+
+Não avance para funcionalidades que dependam de uma estrutura ainda não implementada.
+
+O objetivo final é entregar uma plataforma SaaS profissional, comercializável, escalável e segura, preparada para atender diversas clínicas médicas com múltiplas filiais, sites próprios, agendamento eficiente, comunicação automatizada e gestão integrada.
