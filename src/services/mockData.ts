@@ -16,7 +16,8 @@ import {
   MessageLog, 
   FinancialTransaction, 
   WebsiteConfig,
-  AuditLog
+  AuditLog,
+  ClinicDomain
 } from '../types';
 
 export const INITIAL_PLANS: Plan[] = [
@@ -770,5 +771,42 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     entityId: 'apt_02',
     details: 'Paciente marcada como: Na Sala de Espera',
     timestamp: '2026-11-09T10:15:00.000Z',
+  }
+];
+
+export const INITIAL_CLINIC_DOMAINS: ClinicDomain[] = [
+  {
+    id: 'dom_mureb_app',
+    organizationId: 'org_mureb_01',
+    clinicId: 'clinic_mureb_01',
+    clinicName: 'Clínica Dr. Newton Mureb',
+    domain: 'app.drnewtonmureb.com.br',
+    domainType: 'app',
+    isVerified: true,
+    isActive: true,
+    verificationToken: 'medsync-verify-mureb-app-7f89b1c2',
+    dnsStatus: 'verified',
+    sslStatus: 'active',
+    expectedCname: 'cname.medsync.io',
+    verifiedAt: '2026-11-09T14:30:00.000Z',
+    lastDnsCheckAt: '2026-11-10T10:00:00.000Z',
+    createdAt: '2026-11-09T14:00:00.000Z',
+  },
+  {
+    id: 'dom_mureb_web',
+    organizationId: 'org_mureb_01',
+    clinicId: 'clinic_mureb_01',
+    clinicName: 'Clínica Dr. Newton Mureb',
+    domain: 'www.drnewtonmureb.com.br',
+    domainType: 'website',
+    isVerified: true,
+    isActive: true,
+    verificationToken: 'medsync-verify-mureb-web-4e92a831',
+    dnsStatus: 'verified',
+    sslStatus: 'active',
+    expectedCname: 'cname.medsync.io',
+    verifiedAt: '2026-11-09T14:35:00.000Z',
+    lastDnsCheckAt: '2026-11-10T10:00:00.000Z',
+    createdAt: '2026-11-09T14:00:00.000Z',
   }
 ];

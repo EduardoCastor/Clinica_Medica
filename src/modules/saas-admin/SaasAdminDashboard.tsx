@@ -12,14 +12,21 @@ import {
   Edit, 
   Lock,
   PauseCircle,
-  PlayCircle
+  PlayCircle,
+  Globe
 } from 'lucide-react';
 import { Plan, Organization } from '../../types';
 import { StorageService } from '../../services/storage';
 import { useTenant } from '../../contexts/TenantContext';
+import { DomainsManagement } from './DomainsManagement';
 
-export const SaasAdminDashboard: React.FC = () => {
+interface SaasAdminDashboardProps {
+  onSimulateDomain?: (domain: string) => void;
+}
+
+export const SaasAdminDashboard: React.FC<SaasAdminDashboardProps> = ({ onSimulateDomain }) => {
   const { plans, organization, updateOrganization } = useTenant();
+  const [activeTab, setActiveTab] = useState<'overview' | 'domains'>('domains');
   const [plansList, setPlansList] = useState<Plan[]>(StorageService.getPlans());
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
 
@@ -52,12 +59,47 @@ export const SaasAdminDashboard: React.FC = () => {
         <div className="text-xs text-purple-900 space-y-1">
           <strong className="font-bold">Ambiente Exclusivo: Super Administrador da Plataforma SaaS (MedSync)</strong>
           <p className="text-purple-800 leading-relaxed">
-            Neste painel são gerenciados os planos comerciais, limites operacionais, assinaturas e faturamento das clínicas parceiras. 
+            Neste painel são gerenciados os planos comerciais, limites operacionais, assinaturas, domínios e faturamento das clínicas parceiras. 
             <strong> Conformidade de Privacidade:</strong> O administrador geral da plataforma possui restrição arquitetural e não tem acesso aos prontuários ou diagnósticos médicos dos pacientes de cada clínica.
           </p>
         </div>
       </div>
 
+      {/* Sub-tab Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          onClick={() => setActiveTab('domains')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+            activeTab === 'domains'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>Domínios & Sites (Novo)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+            activeTab === 'overview'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>Visão Geral & Planos Comerciais</span>
+        </button>
+      </div>
+
+      {/* TAB 1: Domains & Sites */}
+      {activeTab === 'domains' && (
+        <DomainsManagement onSimulateDomain={onSimulateDomain} />
+      )}
+
+      {/* TAB 2: Overview & Commercial Plans */}
+      {activeTab === 'overview' && (
+        <>
       {/* KPI Overview Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs">
@@ -268,6 +310,8 @@ export const SaasAdminDashboard: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
 
     </div>

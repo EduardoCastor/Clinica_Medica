@@ -10,15 +10,22 @@ import {
   Check, 
   Save, 
   DoorClosed,
-  Trash2
+  Trash2,
+  Globe,
+  ExternalLink,
+  Copy,
+  Server,
+  CheckCircle2
 } from 'lucide-react';
 import { useTenant } from '../../contexts/TenantContext';
-import { Branch, Room } from '../../types';
+import { Branch, Room, ClinicDomain } from '../../types';
 import { StorageService } from '../../services/storage';
 
 export const ClinicSettings: React.FC = () => {
   const { clinic, updateClinic, branches, refreshData } = useTenant();
   const [rooms, setRooms] = useState<Room[]>(StorageService.getRooms());
+  const [domains, setDomains] = useState<ClinicDomain[]>(StorageService.getDomainsByClinic(clinic.id));
+  const [copiedDomain, setCopiedDomain] = useState<string | null>(null);
 
   const [legalName, setLegalName] = useState(clinic.legalName);
   const [tradeName, setTradeName] = useState(clinic.tradeName);
@@ -319,6 +326,129 @@ export const ClinicSettings: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Domínios & Endereços Contratados (Dual-Domain Architecture) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-sky-600" />
+              <h3 className="text-sm font-bold text-slate-900">
+                Domínios & Endereços Exclusivos da Clínica
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Cada ambiente opera sob um endereço próprio com certificado SSL dedicado e separação total de segurança.
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+            Multi-Tenant Ativo
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Painel do Sistema (app.*) */}
+          {domains.find(d => d.domainType === 'app') ? (
+            (() => {
+              const appDom = domains.find(d => d.domainType === 'app')!;
+              return (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-800">
+                      <Server className="w-4 h-4 text-sky-600" />
+                      1. Painel de Gestão da Clínica
+                    </span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      {appDom.isVerified ? 'Verificado & Seguro' : 'Aguardando DNS'}
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold text-slate-900 truncate">
+                      https://{appDom.domain}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://${appDom.domain}`);
+                        setCopiedDomain(appDom.domain);
+                        setTimeout(() => setCopiedDomain(null), 2000);
+                      }}
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition"
+                      title="Copiar URL"
+                    >
+                      {copiedDomain === appDom.domain ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Endereço exclusivo para médicos, fisioterapeutas, recepcionistas e administradores. 
+                    Exige autenticação rigorosa e dá acesso ao prontuário eletrônico e faturamento.
+                  </p>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-400 flex items-center justify-center">
+              Nenhum subdomínio "app" configurado pelo Super Admin.
+            </div>
+          )}
+
+          {/* Site Institucional (www.*) */}
+          {domains.find(d => d.domainType === 'website') ? (
+            (() => {
+              const webDom = domains.find(d => d.domainType === 'website')!;
+              return (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-800">
+                      <Globe className="w-4 h-4 text-teal-600" />
+                      2. Site Institucional Público
+                    </span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      {webDom.isVerified ? 'Publicado' : 'Aguardando DNS'}
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold text-slate-900 truncate">
+                      https://{webDom.domain}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://${webDom.domain}`);
+                        setCopiedDomain(webDom.domain);
+                        setTimeout(() => setCopiedDomain(null), 2000);
+                      }}
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition"
+                      title="Copiar URL"
+                    >
+                      {copiedDomain === webDom.domain ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    Endereço público acessado pelos pacientes. Exibe apresentação da clínica, especialidades, corpo clínico e formulário de agendamento online.
+                  </p>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-400 flex items-center justify-center">
+              Nenhum domínio "www" configurado pelo Super Admin.
+            </div>
+          )}
+
         </div>
       </div>
 

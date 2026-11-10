@@ -31,5 +31,37 @@ npm run build
 ## 3. Aplicação das Migrations no Supabase
 
 1. Acesse o SQL Editor do seu projeto Supabase.
-2. Execute o conteúdo de `/supabase/migrations/20261109000000_initial_schema.sql`.
-3. (Opcional) Execute `/supabase/seed/seed.sql` para carregar dados iniciais e a clínica modelo Dr. Newton Mureb.
+2. Execute o conteúdo de `/supabase/migrations/20261109000000_initial_schema.sql` (Schema mestre).
+3. Execute o conteúdo de `/supabase/migrations/20261110000000_clinic_domains.sql` (Tabela `clinic_domains`, restrições de unicidade e políticas RLS).
+4. (Opcional) Execute `/supabase/seed/seed.sql` para carregar dados iniciais e a clínica modelo Dr. Newton Mureb.
+
+## 4. Arquitetura de Hospedagem & Domínios Customizados Multi-Tenant
+
+### 4.1. Avaliação de Provedores de Hospedagem
+
+| Provedor | Múltiplos Domínios por Tenant | Wildcard SSL Automático | Roteamento Edge Anycast | Recomendação MedSync SaaS |
+| :--- | :--- | :--- | :--- | :--- |
+| **GitHub Pages** | **Não** (apenas 1 CNAME por repo) | Não nativo para múltiplos FQDNs | Básico | Ambiente de demonstração e homologação |
+| **Vercel** | **Sim** (Domains API com SSL Let's Encrypt) | Sim, automático | Sim, Vercel Edge Network | **Recomendado para Produção** |
+| **Cloudflare Pages / Workers** | **Sim** (Cloudflare for SaaS / Custom Hostnames) | Sim (Universal SSL com emissão instantânea) | Sim, CDN global Anycast | **Recomendado para Produção em Escala** |
+
+### 4.2. Configuração de DNS para Clínicas Parceiras
+
+Para cada clínica contratante (exemplo: Dr. Newton Mureb):
+
+1. **Painel do Sistema Administrativo**:
+   - Tipo: `CNAME`
+   - Entrada: `app` (ou `app.drnewtonmureb.com.br`)
+   - Destino: `cname.medsync.io`
+   - TTL: `Auto` ou `3600`
+
+2. **Site Institucional Público**:
+   - Tipo: `CNAME`
+   - Entrada: `www` (ou `www.drnewtonmureb.com.br`)
+   - Destino: `cname.medsync.io`
+   - TTL: `Auto` ou `3600`
+
+3. **Validação de Propriedade (TXT)**:
+   - Entrada: `_medsync-challenge.drnewtonmureb.com.br`
+   - Valor: Token gerado pelo módulo "Domínios e Sites" no Super Admin.
+

@@ -153,3 +153,24 @@ Todas as tabelas contêm a chave estrangeira `organization_id` (e `branch_id` on
 1. **Risco de Vazamento Multi-Tenant**: Mitigado por testes automatizados de RLS no nível do banco e verificação forçada de `organization_id` em todos os índices compostos.
 2. **Conflito de Horários em Agendamentos Simultâneos**: Mitigado por restrições de exclusão no PostgreSQL (`btree_gist` / `EXCLUDE USING gist`) garantindo atomicidade estrita.
 3. **Conformidade LGPD para Prontuários Médicos**: Armazenamento imutável com histórico de versões, sem exclusão física (soft delete com log de auditoria obrigatório).
+
+## 9. Arquitetura Dual-Domain e Separação Painel vs Site Institucional
+
+### 9.1. Princípio do Dual-Domain por Clínica
+Cada clínica cliente opera sob dois FQDNs distintos no mesmo banco de dados:
+1. **Painel do Sistema (`domain_type = 'app'`)**: ex.: `app.drnewtonmureb.com.br`
+   - Destinado aos colaboradores (médicos, secretárias, administradores).
+   - Exige autenticação via Supabase Auth.
+   - Fornece acesso a prontuários, financeiro, agendamentos internos e configurações.
+2. **Site Institucional Público (`domain_type = 'website'`)**: ex.: `www.drnewtonmureb.com.br`
+   - Destinado aos pacientes e ao público geral.
+   - Sem autenticação obrigatória.
+   - Exibe bio médica, especialidades, filiais físicas, paleta visual personalizada e widget de agendamento público online.
+
+### 9.2. Mecanismo de Resolução em Tempo de Execução (`DomainResolver`)
+- O navegador lê `window.location.hostname`.
+- O serviço `DomainResolver` busca o registro correspondente em `clinic_domains`.
+- Se `domain_type === 'app'`, a SPA bloqueia o acesso anônimo e inicializa o fluxo de autenticação do painel restrito àquela organização.
+- Se `domain_type === 'website'`, a SPA carrega exclusivamente o template institucional com a paleta configurada (`WebsiteConfig`). O código do site público não inicializa repositórios de prontuários médicos ou dados financeiros.
+- Na base de dados, políticas RLS impedem que chaves anônimas (`anon`) realizem queries em `medical_records`, `financial_transactions` ou `patients`. Apenas a inserção de agendamento público (`appointments` com status `scheduled`) é autorizada para o papel `anon`.
+

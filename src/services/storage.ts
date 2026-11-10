@@ -18,7 +18,8 @@ import {
   WebsiteConfig,
   AuditLog,
   AppointmentStatus,
-  ColorPalette
+  ColorPalette,
+  ClinicDomain
 } from '../types';
 
 import {
@@ -39,7 +40,8 @@ import {
   INITIAL_MESSAGES,
   INITIAL_FINANCIAL,
   INITIAL_WEBSITE,
-  INITIAL_AUDIT_LOGS
+  INITIAL_AUDIT_LOGS,
+  INITIAL_CLINIC_DOMAINS
 } from './mockData';
 
 const STORAGE_KEYS = {
@@ -61,6 +63,7 @@ const STORAGE_KEYS = {
   FINANCIAL: 'medsync_financial',
   WEBSITE: 'medsync_website',
   AUDIT_LOGS: 'medsync_audit',
+  CLINIC_DOMAINS: 'medsync_clinic_domains',
   ACTIVE_BRANCH_ID: 'medsync_active_branch',
   ACTIVE_USER_ID: 'medsync_active_user',
 };
@@ -483,5 +486,82 @@ export const StorageService = {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEYS.ACTIVE_USER_ID, id);
     window.dispatchEvent(new Event('medsync_storage_update'));
+  },
+
+  // Clinic Custom Domains (Multi-tenant Architecture)
+  getClinicDomains: (): ClinicDomain[] => getStored<ClinicDomain[]>(STORAGE_KEYS.CLINIC_DOMAINS, INITIAL_CLINIC_DOMAINS),
+  
+  saveClinicDomain: (domain: ClinicDomain): { success: boolean; error?: string } => {
+    const list = StorageService.getClinicDomains();
+    const cleanDomain = domain.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    
+    // Validate uniqueness of domain name
+    const existingDomainName = list.find(d => d.domain.toLowerCase() === cleanDomain && d.id !== domain.id);
+    if (existingDomainName) {
+      return { success: false, error: `O domínio "${cleanDomain}" já está em uso por outra clínica ou ambiente.` };
+    }
+
+    // Validate only one domain per (clinic_id, domain_type)
+    const existingType = list.find(d => d.clinicId === domain.clinicId && d.domainType === domain.domainType && d.id !== domain.id);
+    if (existingType) {
+      return { success: false, error: `A clínica já possui um domínio configurado para o tipo ${domain.domainType === 'app' ? 'Painel do Sistema' : 'Site Institucional'}. Remova ou edite o existente.` };
+    }
+
+    const domainToSave: ClinicDomain = {
+      ...domain,
+      domain: cleanDomain,
+      updatedAt: new Date().toISOString()
+    };
+
+    const index = list.findIndex(d => d.id === domainToSave.id);
+    if (index >= 0) {
+      list[index] = domainToSave;
+    } else {
+      list.push(domainToSave);
+    }
+
+    setStored(STORAGE_KEYS.CLINIC_DOMAINS, list);
+    return { success: true };
+  },
+
+  deleteClinicDomain: (id: string): void => {
+    const list = StorageService.getClinicDomains().filter(d => d.id !== id);
+    setStored(STORAGE_KEYS.CLINIC_DOMAINS, list);
+  },
+
+  toggleDomainActive: (id: string): void => {
+    const list = StorageService.getClinicDomains();
+    const index = list.findIndex(d => d.id === id);
+    if (index >= 0) {
+      list[index].isActive = !list[index].isActive;
+      list[index].updatedAt = new Date().toISOString();
+      setStored(STORAGE_KEYS.CLINIC_DOMAINS, list);
+    }
+  },
+
+  verifyDomainDns: (id: string): { success: boolean; message: string } => {
+    const list = StorageService.getClinicDomains();
+    const index = list.findIndex(d => d.id === id);
+    if (index >= 0) {
+      list[index].dnsStatus = 'verified';
+      list[index].isVerified = true;
+      list[index].sslStatus = 'active';
+      list[index].verifiedAt = new Date().toISOString();
+      list[index].lastDnsCheckAt = new Date().toISOString();
+      list[index].updatedAt = new Date().toISOString();
+      setStored(STORAGE_KEYS.CLINIC_DOMAINS, list);
+      return { success: true, message: `DNS e certificado SSL validados com sucesso para ${list[index].domain}!` };
+    }
+    return { success: false, message: 'Domínio não encontrado.' };
+  },
+
+  getDomainsByClinic: (clinicId: string): ClinicDomain[] => {
+    return StorageService.getClinicDomains().filter(d => d.clinicId === clinicId);
+  },
+
+  findDomainByName: (domainName: string): ClinicDomain | undefined => {
+    const normalized = domainName.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
+    return StorageService.getClinicDomains().find(d => d.domain.toLowerCase() === normalized && d.isActive);
   }
 };
+

@@ -51,3 +51,20 @@ Todas as tabelas do sistema utilizam chaves primárias do tipo `UUID`, geradas v
 
 ### 9. Gerador de Site White-Label
 - **`websites`**: Configurações de site da clínica (slug, domínio próprio, título, descrição, paleta de cores, logotipo, seções ativas).
+
+### 10. Mapeamento de Domínios Customizados (Multi-Tenant)
+- **`clinic_domains`**: Registro de domínios FQDN exclusivos vinculados a organizações e clínicas.
+  - `id`: UUID chave primária.
+  - `organization_id`: UUID chave estrangeira para `organizations`.
+  - `clinic_id`: UUID chave estrangeira para `clinics`.
+  - `domain`: Texto com índice e restrição `UNIQUE` (ex: `app.drnewtonmureb.com.br`, `www.drnewtonmureb.com.br`).
+  - `domain_type`: Enum `app` (Painel Administrativo do Sistema) ou `website` (Site Institucional Público).
+  - `is_verified`: Booleano indicando validação de registros DNS e propriedade do domínio.
+  - `is_active`: Booleano de ativação/pausa pelo Super Admin.
+  - `verification_token`: Token para validação de entrada TXT (`_medsync-challenge`).
+  - `dns_status`: Status de apontamento DNS (`pending`, `dns_configured`, `propagating`, `verified`, `error`).
+  - `ssl_status`: Status de emissão de certificado SSL/TLS (`pending`, `provisioning`, `active`, `error`).
+  - `expected_cname`: CNAME canônico da infraestrutura Anycast (padrão `cname.medsync.io`).
+  - `verified_at`, `last_dns_check_at`: Timestamps de auditoria.
+  - `CONSTRAINT unique_clinic_domain_type UNIQUE (clinic_id, domain_type)`: Garante que cada clínica possua no máximo 1 domínio para o painel (`app`) e 1 domínio para o site (`website`).
+

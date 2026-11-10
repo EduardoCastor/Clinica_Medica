@@ -321,3 +321,38 @@ export interface AuditLog {
   details: string;
   timestamp: string;
 }
+
+export type DomainType = 'app' | 'website';
+
+export type DnsStatus = 'pending' | 'dns_configured' | 'propagating' | 'verified' | 'error';
+
+export type SslStatus = 'pending' | 'provisioning' | 'active' | 'error';
+
+export interface ClinicDomain {
+  id: string;
+  organizationId: string;
+  clinicId: string;
+  clinicName?: string;
+  domain: string;
+  domainType: DomainType;
+  isVerified: boolean;
+  isActive: boolean;
+  verificationToken: string;
+  dnsStatus: DnsStatus;
+  sslStatus: SslStatus;
+  expectedCname: string;
+  verifiedAt?: string;
+  lastDnsCheckAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ResolvedTenantContext {
+  resolved: boolean;
+  domain?: ClinicDomain;
+  environment: 'app' | 'website' | 'saas_root';
+  organizationId?: string;
+  clinicId?: string;
+  isSimulation?: boolean;
+}
+
