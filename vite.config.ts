@@ -4,8 +4,16 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  // Roteamento de base flexível para publicação híbrida:
+  // 1. Variável explícita VITE_BASE_PATH (se fornecida)
+  // 2. Ambiente Vercel (VERCEL=1) ou domínio customizado -> '/'
+  // 3. Workflow de build do GitHub Actions (sem Vercel) -> '/Clinica_Medica/'
+  // 4. Padrão local e produção com domínio próprio -> '/'
+  const basePath = process.env.VITE_BASE_PATH || 
+    (process.env.GITHUB_ACTIONS === 'true' && !process.env.VERCEL ? '/Clinica_Medica/' : '/');
+
   return {
-    base: '/Clinica_Medica/',
+    base: basePath,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

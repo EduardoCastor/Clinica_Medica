@@ -6,8 +6,8 @@
     <script type="text/javascript">
       // Single Page Apps for GitHub Pages
       // https://github.com/rafgraph/spa-github-pages
-      // This script takes the current url and redirects to index.html with the path encoded in query
-      var pathSegmentsToKeep = 1; // 1 segment for https://eduardocastor.github.io/Clinica_Medica/
+      var isGitHubPagesSubpath = window.location.pathname.indexOf('/Clinica_Medica') === 0;
+      var pathSegmentsToKeep = isGitHubPagesSubpath ? 1 : 0;
       var l = window.location;
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
