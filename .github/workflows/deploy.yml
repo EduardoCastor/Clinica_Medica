@@ -37,7 +37,7 @@ jobs:
       - name: Compilar para produção (Vite Build)
         run: npm run build
         env:
-          VITE_BASE_PATH: '/Clinica_Medica/'
+          VITE_BASE_PATH: '/clinica_medica/'
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
