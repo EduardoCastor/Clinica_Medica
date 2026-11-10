@@ -68,7 +68,7 @@ Para cada clínica contratante (exemplo: Dr. Newton Mureb):
 ## 5. Migração Segura para a Vercel (Etapa A: Homologação e Coexistência)
 
 ### 5.1. Princípio da Não-Interrupção (Zero Downtime)
-A versão em produção no GitHub Pages (`https://eduardocastor.github.io/Clinica_Medica/`) permanece 100% ativa e funcional durante todo o processo.
+A versão em produção no GitHub Pages (`https://eduardocastor.github.io/clinica_medica/`) usa o caminho canônico do repositório durante todo o processo.
 - O workflow `.github/workflows/deploy.yml` permanece ativo na branch `main`.
 - A nova configuração na branch `migration/vercel` contém o arquivo `vercel.json` e a resolução dinâmica de `base` no `vite.config.ts`.
 - Nenhuma alteração de DNS ou no Registro.br deve ser feita nesta Etapa A.
@@ -78,7 +78,7 @@ A versão em produção no GitHub Pages (`https://eduardocastor.github.io/Clinic
 1. **Acessar o Painel Vercel**: Faça login em [vercel.com](https://vercel.com) com sua conta.
 2. **Adicionar Novo Projeto**: Clique em **"Add New..."** > **"Project"**.
 3. **Importar Repositório**:
-   - Localize o repositório `EduardoCastor/Clinica_Medica`.
+   - Localize o repositório `EduardoCastor/clinica_medica`.
    - Clique em **"Import"**.
 4. **Configurações do Projeto (Configure Project)**:
    - **Framework Preset**: Selecione `Vite`.
@@ -97,11 +97,11 @@ A versão em produção no GitHub Pages (`https://eduardocastor.github.io/Clinic
 
 ### 5.3. Checklist de Validação Pré-Produção
 Após a conclusão do build na Vercel:
-- [ ] O deploy gera uma URL de Preview (ex.: `https://clinica-medica-xxx.vercel.app`).
+- [ ] O deploy gera uma URL de Preview (ex.: `https://clinica_medica-xxx.vercel.app`).
 - [ ] A página inicial carrega todos os assets estáticos sem erros 404 no console.
 - [ ] Ao recarregar páginas internas (F5), o arquivo `vercel.json` reescreve para `/index.html` sem retornar erro 404.
 - [ ] A conexão com o Supabase é estabelecida com sucesso.
 - [ ] O simulador de domínios reconhece os ambientes `app.drnewtonmureb.com.br` e `www.drnewtonmureb.com.br`.
-- [ ] O endereço legado no GitHub Pages (`https://eduardocastor.github.io/Clinica_Medica/`) continua operando normalmente.
+- [ ] O endereço do GitHub Pages (`https://eduardocastor.github.io/clinica_medica/`) continua operando normalmente.
 
 
