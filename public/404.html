@@ -11,11 +11,11 @@
       var isClinicaMedica = path.toLowerCase().indexOf('/clinica_medica') === 0;
 
       if (isClinicaMedica) {
-        // Normaliza automaticamente qualquer variação de maiúsculas/minúsculas para /Clinica_Medica/
+        // Normaliza automaticamente qualquer variação de maiúsculas/minúsculas para /clinica_medica/
         var subpath = path.slice('/clinica_medica'.length);
         var cleanSubpath = subpath ? subpath.replace(/^\//, '').replace(/&/g, '~and~') : '';
         var targetUrl = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-          '/Clinica_Medica/' + (cleanSubpath ? '?/' + cleanSubpath : '') +
+          '/clinica_medica/' + (cleanSubpath ? '?/' + cleanSubpath : '') +
           (l.search ? (cleanSubpath ? '&' : '?') + l.search.slice(1).replace(/&/g, '~and~') : '') +
           l.hash;
         l.replace(targetUrl);
