@@ -98,7 +98,7 @@ export const INITIAL_CLINIC: Clinic = {
   email: 'contato@drnewtonmureb.com.br',
   phone: '(11) 3284-9100',
   whatsapp: '(11) 98765-4321',
-  logoUrl: '/icon.svg',
+  logoUrl: `${import.meta.env.BASE_URL}icon.svg`,
   primaryColor: '#0284c7',
   institutionalBio: 'Referência em medicina ortomolecular e saúde metabólica. Nosso foco é a recuperação da saúde celular através da identificação e correção de desequilíbrios bioquímicos, hormonais e nutricionais, atuando com rigor científico na prevenção de sarcopenia, manejo de lipedema e longevidade saudável.',
   createdAt: '2026-01-15T10:00:00.000Z',

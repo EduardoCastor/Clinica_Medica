@@ -3,14 +3,31 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
-export default defineConfig(() => {
-  // Roteamento de base flexível para publicação híbrida:
-  // 1. Variável explícita VITE_BASE_PATH (se fornecida)
-  // 2. Ambiente Vercel (VERCEL=1) ou domínio customizado -> '/'
-  // 3. Workflow de build do GitHub Actions (sem Vercel) -> '/Clinica_Medica/'
-  // 4. Padrão local e produção com domínio próprio -> '/'
-  const basePath = process.env.VITE_BASE_PATH || 
-    (process.env.GITHUB_ACTIONS === 'true' && !process.env.VERCEL ? '/Clinica_Medica/' : '/');
+export default defineConfig(({ command, mode }) => {
+  // Configuração condicional segura para dupla hospedagem (GitHub Pages e Vercel):
+  // 1. Variável explícita VITE_BASE_PATH: máxima prioridade
+  // 2. Vercel: a plataforma Vercel injeta VERCEL=1 automaticamente -> base = '/'
+  // 3. Servidor de desenvolvimento local (vite dev): sempre serve a partir da raiz -> base = '/'
+  // 4. GitHub Actions ou Build padrão de produção: base = '/Clinica_Medica/' (exato case do repositório)
+  let basePath = '/Clinica_Medica/';
+
+  if (process.env.VITE_BASE_PATH) {
+    basePath = process.env.VITE_BASE_PATH;
+  } else if (process.env.VERCEL) {
+    basePath = '/';
+  } else if (command === 'serve' || mode === 'development') {
+    basePath = '/';
+  } else if (process.env.GITHUB_ACTIONS === 'true') {
+    basePath = '/Clinica_Medica/';
+  }
+
+  // Assegurar formato canônico com barras inicial e final
+  if (!basePath.startsWith('/')) {
+    basePath = '/' + basePath;
+  }
+  if (!basePath.endsWith('/')) {
+    basePath = basePath + '/';
+  }
 
   return {
     base: basePath,

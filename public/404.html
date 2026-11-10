@@ -5,18 +5,29 @@
     <title>MedSync SaaS - Redirecionando...</title>
     <script type="text/javascript">
       // Single Page Apps for GitHub Pages
-      // https://github.com/rafgraph/spa-github-pages
-      var isGitHubPagesSubpath = window.location.pathname.indexOf('/Clinica_Medica') === 0;
-      var pathSegmentsToKeep = isGitHubPagesSubpath ? 1 : 0;
+      // Suporte a case-sensitivity e caminhos híbridos (GitHub Pages e Vercel)
       var l = window.location;
-      l.replace(
-        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
-        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
-        (l.search ? '&' : '') +
-        l.search.slice(1).replace(/&/g, '~and~') +
-        l.hash
-      );
+      var path = l.pathname;
+      var isClinicaMedica = path.toLowerCase().indexOf('/clinica_medica') === 0;
+
+      if (isClinicaMedica) {
+        // Normaliza automaticamente qualquer variação de maiúsculas/minúsculas para /Clinica_Medica/
+        var subpath = path.slice('/clinica_medica'.length);
+        var cleanSubpath = subpath ? subpath.replace(/^\//, '').replace(/&/g, '~and~') : '';
+        var targetUrl = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+          '/Clinica_Medica/' + (cleanSubpath ? '?/' + cleanSubpath : '') +
+          (l.search ? (cleanSubpath ? '&' : '?') + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash;
+        l.replace(targetUrl);
+      } else {
+        // Redirecionamento para raiz (Vercel ou domínio próprio)
+        var cleanPath = path.slice(1).replace(/&/g, '~and~');
+        var targetUrl = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+          '/?/' + cleanPath +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash;
+        l.replace(targetUrl);
+      }
     </script>
   </head>
   <body>
