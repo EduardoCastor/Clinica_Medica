@@ -29,9 +29,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Instalar dependências
-        run: npm install
+      - name: Instalar dependências (npm ci)
+        run: npm ci
 
       - name: Compilar para produção (Vite Build)
         run: npm run build
