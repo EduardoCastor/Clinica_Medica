@@ -10,8 +10,8 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
-    "build:gh-pages": "VITE_BASE_PATH=/Clinica_Medica/ vite build",
-    "build:vercel": "VITE_BASE_PATH=/ vite build",
+    "build:gh-pages": "BUILD_TARGET=github VITE_BASE_PATH=/clinica_medica/ vite build",
+    "build:vercel": "BUILD_TARGET=vercel VITE_BASE_PATH=/ vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

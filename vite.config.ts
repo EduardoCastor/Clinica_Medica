@@ -5,20 +5,28 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(({ command, mode }) => {
   // Configuração condicional segura para dupla hospedagem (GitHub Pages e Vercel):
-  // 1. Variável explícita VITE_BASE_PATH: máxima prioridade
-  // 2. Vercel: a plataforma Vercel injeta VERCEL=1 automaticamente -> base = '/'
-  // 3. Servidor de desenvolvimento local (vite dev): sempre serve a partir da raiz -> base = '/'
-  // 4. GitHub Actions ou Build padrão de produção: base = '/Clinica_Medica/' (exato case do repositório)
-  let basePath = '/Clinica_Medica/';
+  // 1. Variável explícita BUILD_TARGET:
+  //    - BUILD_TARGET=vercel -> base = '/'
+  //    - BUILD_TARGET=github -> base = '/clinica_medica/'
+  // 2. Variável explícita VITE_BASE_PATH:
+  //    - ex: VITE_BASE_PATH=/ ou VITE_BASE_PATH=/clinica_medica/
+  // 3. Vercel: a plataforma Vercel injeta VERCEL=1 automaticamente -> base = '/'
+  // 4. Servidor de desenvolvimento local (vite dev): sempre serve a partir da raiz -> base = '/'
+  // 5. GitHub Actions ou Build padrão de produção: base = '/clinica_medica/' (nome real do repositório em minúsculas)
+  let basePath = '/clinica_medica/';
 
-  if (process.env.VITE_BASE_PATH) {
+  if (process.env.BUILD_TARGET === 'vercel') {
+    basePath = '/';
+  } else if (process.env.BUILD_TARGET === 'github') {
+    basePath = '/clinica_medica/';
+  } else if (process.env.VITE_BASE_PATH) {
     basePath = process.env.VITE_BASE_PATH;
   } else if (process.env.VERCEL) {
     basePath = '/';
   } else if (command === 'serve' || mode === 'development') {
     basePath = '/';
   } else if (process.env.GITHUB_ACTIONS === 'true') {
-    basePath = '/Clinica_Medica/';
+    basePath = '/clinica_medica/';
   }
 
   // Assegurar formato canônico com barras inicial e final
