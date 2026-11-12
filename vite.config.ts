@@ -13,20 +13,15 @@ export default defineConfig(({ command, mode }) => {
   // 3. Vercel: a plataforma Vercel injeta VERCEL=1 automaticamente -> base = '/'
   // 4. Servidor de desenvolvimento local (vite dev): sempre serve a partir da raiz -> base = '/'
   // 5. GitHub Actions ou Build padrão de produção: base = '/clinica_medica/' (nome real do repositório em minúsculas)
-  let basePath = '/clinica_medica/';
+  // Default to '/' for AI Studio and standard hosting, unless GitHub Actions or explicit BUILD_TARGET=github is specified
+  let basePath = '/';
 
-  if (process.env.BUILD_TARGET === 'vercel') {
-    basePath = '/';
-  } else if (process.env.BUILD_TARGET === 'github') {
+  if (process.env.BUILD_TARGET === 'github' || process.env.GITHUB_ACTIONS === 'true') {
     basePath = '/clinica_medica/';
+  } else if (process.env.BUILD_TARGET === 'vercel') {
+    basePath = '/';
   } else if (process.env.VITE_BASE_PATH) {
     basePath = process.env.VITE_BASE_PATH;
-  } else if (process.env.VERCEL) {
-    basePath = '/';
-  } else if (command === 'serve' || mode === 'development') {
-    basePath = '/';
-  } else if (process.env.GITHUB_ACTIONS === 'true') {
-    basePath = '/clinica_medica/';
   }
 
   // Assegurar formato canônico com barras inicial e final
@@ -46,6 +41,8 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     server: {
+      host: '0.0.0.0',
+      port: 3000,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
