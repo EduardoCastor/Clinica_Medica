@@ -19,7 +19,12 @@ import {
   AuditLog,
   AppointmentStatus,
   ColorPalette,
-  ClinicDomain
+  ClinicDomain,
+  Prescription,
+  MedicalCertificate,
+  LabOrder,
+  ExamResult,
+  MedicalRecordAddendum
 } from '../types';
 
 import {
@@ -41,7 +46,11 @@ import {
   INITIAL_FINANCIAL,
   INITIAL_WEBSITE,
   INITIAL_AUDIT_LOGS,
-  INITIAL_CLINIC_DOMAINS
+  INITIAL_CLINIC_DOMAINS,
+  INITIAL_PRESCRIPTIONS,
+  INITIAL_CERTIFICATES,
+  INITIAL_LAB_ORDERS,
+  INITIAL_EXAM_RESULTS
 } from './mockData';
 
 const STORAGE_KEYS = {
@@ -58,6 +67,10 @@ const STORAGE_KEYS = {
   APPOINTMENTS: 'medsync_appointments',
   WAITLIST: 'medsync_waitlist',
   MEDICAL_RECORDS: 'medsync_records',
+  PRESCRIPTIONS: 'medsync_prescriptions',
+  CERTIFICATES: 'medsync_certificates',
+  LAB_ORDERS: 'medsync_lab_orders',
+  EXAM_RESULTS: 'medsync_exam_results',
   TEMPLATES: 'medsync_templates',
   MESSAGES: 'medsync_messages',
   FINANCIAL: 'medsync_financial',
@@ -110,6 +123,10 @@ export const StorageService = {
     setStored(STORAGE_KEYS.APPOINTMENTS, INITIAL_APPOINTMENTS);
     setStored(STORAGE_KEYS.WAITLIST, INITIAL_WAITLIST);
     setStored(STORAGE_KEYS.MEDICAL_RECORDS, INITIAL_MEDICAL_RECORDS);
+    setStored(STORAGE_KEYS.PRESCRIPTIONS, INITIAL_PRESCRIPTIONS);
+    setStored(STORAGE_KEYS.CERTIFICATES, INITIAL_CERTIFICATES);
+    setStored(STORAGE_KEYS.LAB_ORDERS, INITIAL_LAB_ORDERS);
+    setStored(STORAGE_KEYS.EXAM_RESULTS, INITIAL_EXAM_RESULTS);
     setStored(STORAGE_KEYS.TEMPLATES, INITIAL_TEMPLATES);
     setStored(STORAGE_KEYS.MESSAGES, INITIAL_MESSAGES);
     setStored(STORAGE_KEYS.FINANCIAL, INITIAL_FINANCIAL);
@@ -352,27 +369,165 @@ export const StorageService = {
     setStored(STORAGE_KEYS.WAITLIST, list);
   },
 
-  // Medical Records (Electronic Health Record)
+  // Medical Records (Electronic Health Record - CFM 1.638/2002 e 1.821/2007)
   getMedicalRecords: (patientId?: string): MedicalRecordEntry[] => {
     const list = getStored<MedicalRecordEntry[]>(STORAGE_KEYS.MEDICAL_RECORDS, INITIAL_MEDICAL_RECORDS);
     if (!patientId) return list;
     return list.filter(r => r.patientId === patientId);
   },
-  saveMedicalRecord: (record: MedicalRecordEntry): void => {
+
+  saveMedicalRecord: (record: MedicalRecordEntry): { success: boolean; message?: string } => {
     const list = getStored<MedicalRecordEntry[]>(STORAGE_KEYS.MEDICAL_RECORDS, INITIAL_MEDICAL_RECORDS);
     const index = list.findIndex(r => r.id === record.id);
+    
     if (index >= 0) {
-      list[index] = record;
+      const existing = list[index];
+      // Regra de Ouro do CFM: Registro assinado não pode ser reeditado
+      if (existing.status === 'signed' && existing.isSigned) {
+        return {
+          success: false,
+          message: 'Conformidade CFM (Resolução nº 1.821/2007): Uma evolução médica assinada é imutável e não pode ser editada. Adicione um "Adendo / Errata" para correções.'
+        };
+      }
+      list[index] = { ...record, updatedAt: new Date().toISOString() };
     } else {
       list.unshift(record);
     }
+    
     setStored(STORAGE_KEYS.MEDICAL_RECORDS, list);
 
     StorageService.addAuditLog({
-      action: index >= 0 ? 'Atualizou Registro Clínico' : 'Novo Registro de Prontuário',
+      action: index >= 0 
+        ? `Atualizou Evolução (${record.status === 'signed' ? 'Finalizada/Assinada' : 'Rascunho'})` 
+        : `Novo Registro de Prontuário (${record.status === 'signed' ? 'Assinado' : 'Rascunho'})`,
       entity: 'Prontuário',
       entityId: record.id,
-      details: `Profissional: ${record.professionalName} - Queixa: ${record.chiefComplaint.substring(0, 60)}...`,
+      details: `Profissional: ${record.professionalName} (${record.professionalCouncilNumber || 'CRM'}) - Queixa: ${record.chiefComplaint.substring(0, 50)}...`,
+    });
+
+    return { success: true };
+  },
+
+  addMedicalRecordAddendum: (recordId: string, addendum: MedicalRecordAddendum): { success: boolean; message?: string } => {
+    const list = getStored<MedicalRecordEntry[]>(STORAGE_KEYS.MEDICAL_RECORDS, INITIAL_MEDICAL_RECORDS);
+    const index = list.findIndex(r => r.id === recordId);
+    if (index === -1) {
+      return { success: false, message: 'Registro clínico original não encontrado.' };
+    }
+
+    const record = list[index];
+    if (!record.addendums) {
+      record.addendums = [];
+    }
+
+    record.addendums.push(addendum);
+    record.updatedAt = new Date().toISOString();
+    list[index] = record;
+    setStored(STORAGE_KEYS.MEDICAL_RECORDS, list);
+
+    StorageService.addAuditLog({
+      action: 'Adicionou Adendo / Errata ao Prontuário (CFM 1.821/2007)',
+      entity: 'Prontuário',
+      entityId: record.id,
+      details: `Adendo por ${addendum.authorName} (${addendum.authorCouncilNumber}): ${addendum.note.substring(0, 60)}...`,
+    });
+
+    return { success: true };
+  },
+
+  // Prescrições e Receituários (Portaria ANVISA 344/98 e Receitas Simples)
+  getPrescriptions: (patientId?: string): Prescription[] => {
+    const list = getStored<Prescription[]>(STORAGE_KEYS.PRESCRIPTIONS, INITIAL_PRESCRIPTIONS);
+    if (!patientId) return list;
+    return list.filter(p => p.patientId === patientId);
+  },
+  savePrescription: (prescription: Prescription): void => {
+    const list = getStored<Prescription[]>(STORAGE_KEYS.PRESCRIPTIONS, INITIAL_PRESCRIPTIONS);
+    const index = list.findIndex(p => p.id === prescription.id);
+    if (index >= 0) {
+      list[index] = prescription;
+    } else {
+      list.unshift(prescription);
+    }
+    setStored(STORAGE_KEYS.PRESCRIPTIONS, list);
+
+    StorageService.addAuditLog({
+      action: `Emissão de Receita (${prescription.type === 'controle_especial' ? 'Controle Especial ANVISA 344/98' : 'Simples'})`,
+      entity: 'Prescrição',
+      entityId: prescription.id,
+      details: `Paciente: ${prescription.patientName} - ${prescription.items.length} medicamento(s) prescritos por ${prescription.professionalName}`,
+    });
+  },
+
+  // Atestados Médicos e Declarações (Resolução CFM nº 1.658/2002)
+  getCertificates: (patientId?: string): MedicalCertificate[] => {
+    const list = getStored<MedicalCertificate[]>(STORAGE_KEYS.CERTIFICATES, INITIAL_CERTIFICATES);
+    if (!patientId) return list;
+    return list.filter(c => c.patientId === patientId);
+  },
+  saveCertificate: (certificate: MedicalCertificate): void => {
+    const list = getStored<MedicalCertificate[]>(STORAGE_KEYS.CERTIFICATES, INITIAL_CERTIFICATES);
+    const index = list.findIndex(c => c.id === certificate.id);
+    if (index >= 0) {
+      list[index] = certificate;
+    } else {
+      list.unshift(certificate);
+    }
+    setStored(STORAGE_KEYS.CERTIFICATES, list);
+
+    StorageService.addAuditLog({
+      action: `Emissão de Atestado Médico (${certificate.type.toUpperCase()})`,
+      entity: 'Atestado',
+      entityId: certificate.id,
+      details: `Paciente: ${certificate.patientName} - CID-10: ${certificate.showCidOnPrint ? certificate.cid10Code : 'Oculto a pedido do sigilo CFM'} - Médico: ${certificate.professionalName}`,
+    });
+  },
+
+  // Pedidos de Exames (Lab Orders)
+  getLabOrders: (patientId?: string): LabOrder[] => {
+    const list = getStored<LabOrder[]>(STORAGE_KEYS.LAB_ORDERS, INITIAL_LAB_ORDERS);
+    if (!patientId) return list;
+    return list.filter(o => o.patientId === patientId);
+  },
+  saveLabOrder: (order: LabOrder): void => {
+    const list = getStored<LabOrder[]>(STORAGE_KEYS.LAB_ORDERS, INITIAL_LAB_ORDERS);
+    const index = list.findIndex(o => o.id === order.id);
+    if (index >= 0) {
+      list[index] = order;
+    } else {
+      list.unshift(order);
+    }
+    setStored(STORAGE_KEYS.LAB_ORDERS, list);
+
+    StorageService.addAuditLog({
+      action: 'Emissão de Solicitação de Exames',
+      entity: 'Exames',
+      entityId: order.id,
+      details: `Paciente: ${order.patientName} - ${order.items.length} exames solicitados por ${order.professionalName}`,
+    });
+  },
+
+  // Resultados de Exames (Exam Results)
+  getExamResults: (patientId?: string): ExamResult[] => {
+    const list = getStored<ExamResult[]>(STORAGE_KEYS.EXAM_RESULTS, INITIAL_EXAM_RESULTS);
+    if (!patientId) return list;
+    return list.filter(r => r.patientId === patientId);
+  },
+  saveExamResult: (result: ExamResult): void => {
+    const list = getStored<ExamResult[]>(STORAGE_KEYS.EXAM_RESULTS, INITIAL_EXAM_RESULTS);
+    const index = list.findIndex(r => r.id === result.id);
+    if (index >= 0) {
+      list[index] = result;
+    } else {
+      list.unshift(result);
+    }
+    setStored(STORAGE_KEYS.EXAM_RESULTS, list);
+
+    StorageService.addAuditLog({
+      action: 'Registro de Resultado de Exame',
+      entity: 'Exames',
+      entityId: result.id,
+      details: `${result.examName} - Laboratório: ${result.laboratoryName} - Status: ${result.status}`,
     });
   },
 

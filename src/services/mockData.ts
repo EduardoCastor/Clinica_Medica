@@ -17,7 +17,11 @@ import {
   FinancialTransaction, 
   WebsiteConfig,
   AuditLog,
-  ClinicDomain
+  ClinicDomain,
+  Prescription,
+  MedicalCertificate,
+  LabOrder,
+  ExamResult
 } from '../types';
 
 export const INITIAL_PLANS: Plan[] = [
@@ -387,20 +391,54 @@ export const INITIAL_PATIENTS: Patient[] = [
     organizationId: 'org_mureb_01',
     originBranchId: 'branch_sp_jardins',
     fullName: 'Camila Albuquerque',
+    socialName: '',
     documentCpf: '318.492.018-44',
+    documentRg: '28.910.450-8',
+    documentRgIssuer: 'SSP/SP',
     birthDate: '1988-06-14',
     gender: 'Feminino',
+    biologicalSex: 'F',
+    genderIdentity: 'Mulher cis',
+    maritalStatus: 'casado',
+    profession: 'Arquiteta de Interiores',
+    nationality: 'Brasileira',
+    naturalness: 'São Paulo/SP',
     phone: '(11) 98144-5566',
     whatsapp: '(11) 98144-5566',
     email: 'camila.albuquerque@email.com',
     postalCode: '04538-133',
     address: 'Rua Pedroso Alvarenga',
     addressNumber: '1120',
+    complement: 'Apto 142',
     neighborhood: 'Itaim Bibi',
     city: 'São Paulo',
     state: 'SP',
+    
+    // Dados Clínicos & Alergias (Destaque em Alerta Vermelho)
+    bloodType: 'A+',
+    weightKg: 68.5,
+    heightCm: 165,
+    calculatedBmi: 25.2,
+    allergies: ['Dipirona (Edema Labial e Urticária)', 'Sulfa'],
+    chronicDiseases: ['Lipedema Estágio II', 'Resistência Insulínica Subclínica'],
+    continuousMedications: ['Coenzima Q10 200mg', 'Magnésio Dimalato 300mg'],
+    
+    // Convênio & CNS
+    healthPlanType: 'convenio',
+    healthPlanOperator: 'Bradesco Saúde',
+    healthPlanNumber: '729831928001',
+    healthPlanValidity: '2028-12-31',
+    healthPlanCategory: 'Top Nacional Plus',
+    cnsNumber: '7000 0123 4567 8901',
+
+    // Contatos
     emergencyContactName: 'Felipe Albuquerque (Esposo)',
     emergencyContactPhone: '(11) 98144-5577',
+    emergencyContactKinship: 'Esposo',
+    
+    // LGPD
+    lgpdConsent: true,
+    lgpdConsentDate: '2026-02-10T14:30:00.000Z',
     administrativeNotes: 'Encaminhada com diagnóstico clínico de Lipedema estágio II nos membros inferiores. Segue acompanhamento conjunto médico e fisioterapêutico.',
     sharingMode: 'model_b_shared', // Compartilhado com a filial do Rio de Janeiro
     authorizedBranchIds: ['branch_sp_jardins', 'branch_rj_ipanema'],
@@ -413,19 +451,46 @@ export const INITIAL_PATIENTS: Patient[] = [
     originBranchId: 'branch_sp_jardins',
     fullName: 'Marcos Vinicius Santos',
     documentCpf: '142.890.312-55',
+    documentRg: '12.445.890-1',
+    documentRgIssuer: 'SSP/SP',
     birthDate: '1964-11-20',
     gender: 'Masculino',
+    biologicalSex: 'M',
+    genderIdentity: 'Homem cis',
+    maritalStatus: 'casado',
+    profession: 'Executivo de Tecnologia',
+    nationality: 'Brasileira',
+    naturalness: 'Campinas/SP',
     phone: '(11) 97233-1122',
     whatsapp: '(11) 97233-1122',
     email: 'marcos.vinicius@santoscorp.com.br',
     postalCode: '01415-000',
     address: 'Alameda Santos',
     addressNumber: '1800',
+    complement: 'Conjunto 81',
     neighborhood: 'Cerqueira César',
     city: 'São Paulo',
     state: 'SP',
+
+    // Dados Clínicos & Alergias
+    bloodType: 'O+',
+    weightKg: 82.0,
+    heightCm: 178,
+    calculatedBmi: 25.9,
+    allergies: ['Frutos do Mar (Anafilaxia grave)', 'Anti-inflamatórios Não Esteroidais (AINEs)'],
+    chronicDiseases: ['Sarcopenia Inicial', 'Hipertensão Arterial Leve Controlada'],
+    continuousMedications: ['Losartana Potássica 50mg/dia'],
+
+    // Convênio
+    healthPlanType: 'particular',
+    cnsNumber: '8900 1234 5678 9012',
+
     emergencyContactName: 'Mariana Santos (Filha)',
     emergencyContactPhone: '(11) 97233-9988',
+    emergencyContactKinship: 'Filha',
+    
+    lgpdConsent: true,
+    lgpdConsentDate: '2026-03-05T09:15:00.000Z',
     administrativeNotes: 'Protocolo de combate à sarcopenia, perda involuntária de força e modulação hormonal de longevidade.',
     sharingMode: 'model_a_exclusive', // Exclusivo da filial SP
     authorizedBranchIds: ['branch_sp_jardins'],
@@ -568,19 +633,258 @@ export const INITIAL_MEDICAL_RECORDS: MedicalRecordEntry[] = [
     branchId: 'branch_sp_jardins',
     professionalId: 'prof_newton',
     professionalName: 'Dr. Newton Mureb',
+    professionalCouncilNumber: 'CRM 84.320/SP',
     appointmentId: 'apt_01',
     recordDate: '2026-11-09T09:30:00.000Z',
+    status: 'signed',
+    consultationType: 'soap',
     chiefComplaint: 'Sensação de peso nas pernas, dor à palpação profunda e dificuldade persistente para reduzir gordura nos membros inferiores mesmo com dieta hipocalórica.',
     clinicalHistory: 'Paciente de 38 anos, histórico familiar positivo de lipedema materno. Relata piora dos sintomas no período pré-menstrual e após longos períodos em pé. Exames metabólicos evidenciam resistência à insulina leve e marcadores de estresse oxidativo aumentados.',
+    vitalSigns: {
+      bloodPressureSystolic: 118,
+      bloodPressureDiastolic: 76,
+      heartRateBpm: 68,
+      respiratoryRateRpm: 16,
+      temperatureCelsius: 36.4,
+      oxygenSaturationPercent: 99,
+      capillaryBloodGlucoseMgDl: 92,
+      weightKg: 68.5,
+      heightCm: 165,
+      bmi: 25.2,
+    },
     physicalExam: 'Inspeção: deposição gordurosa simétrica em coxas e pernas poupando os pés (sinal do manguito evidente). Hematomas espontâneos frequentes. Temperatura cutânea discretamente diminuída distalmente.',
     diagnosticHypothesis: 'Lipedema Grau II com componente de disfunção endotelial e hiperinsulinemia compensatória.',
+    cid10Codes: [
+      { code: 'E88.2', description: 'Lipomatose e Lipedema não classificados em outra parte' },
+      { code: 'E11.9', description: 'Diabetes mellitus tipo 2 sem complicações' }
+    ],
     therapeuticPlan: '1. Modulação anti-inflamatória ortomolecular (fitoquímicos, CoQ10 e ômega 3 de alta pureza). 2. Encaminhamento para fisioterapia especializada (Dr. Rodrigo Viana) para drenagem descongestiva. 3. Adequação da dieta low-carb anti-inflamatória sem restrição calórica extrema.',
     prescriptions: '• Resveratrol 100mg + Quercetina 250mg (1 dose ao dia)\n• Coenzima Q10 200mg (manhã)\n• Magnésio Dimalato 300mg (à noite)\n• Ômega 3 TG 1000mg EPA/DHA (2 cápsulas no almoço)',
     examRequests: 'Painel genético de lipedema, Curva glicêmica e insulinêmica (0, 60, 120 min), PCR ultrassensível, Ferritina, Perfil de citocinas inflamatórias.',
     evolutionNotes: 'Paciente compreendeu perfeitamente que o emagrecimento convencional não corrige o tecido adiposo doente do lipedema de forma isolada e mostrou-se muito motivada com a abordagem biológica integral.',
     isSigned: true,
+    signedAt: '2026-11-09T09:45:00.000Z',
     signatureHash: 'sha256_e9c381fa2847cbb02938174561239aa',
+    addendums: [
+      {
+        id: 'add_01',
+        recordId: 'rec_01',
+        authorId: 'prof_newton',
+        authorName: 'Dr. Newton Mureb',
+        authorCouncilNumber: 'CRM 84.320/SP',
+        note: 'ERRATA / ADENDO CLÍNICO (Resolução CFM nº 1.821/2007): Reforçada a orientação para hidratação mínima de 2,5L/dia e uso de meia elástica de compressão graduada classe 2 durante viagens ou jornadas de trabalho prolongadas sentada.',
+        createdAt: '2026-11-09T16:30:00.000Z',
+        signatureHash: 'sha256_addendum_91823abf10'
+      }
+    ],
     createdAt: '2026-11-09T09:45:00.000Z',
+  }
+];
+
+export const INITIAL_PRESCRIPTIONS: Prescription[] = [
+  {
+    id: 'rx_01',
+    organizationId: 'org_mureb_01',
+    branchId: 'branch_sp_jardins',
+    patientId: 'pat_01',
+    patientName: 'Camila Albuquerque',
+    patientCpf: '318.492.018-44',
+    patientAddress: 'Rua Pedroso Alvarenga, 1120 - Itaim Bibi, São Paulo - SP',
+    professionalId: 'prof_newton',
+    professionalName: 'Dr. Newton Mureb',
+    professionalCouncil: 'CRM 84.320/SP · RQE 41.200',
+    type: 'simples',
+    prescriptionDate: '2026-11-09',
+    validityDays: 30,
+    items: [
+      {
+        id: 'rx_item_01',
+        medicineName: 'Coenzima Q10 (Ubiquinona)',
+        concentration: '200 mg',
+        pharmaceuticalForm: 'Cápsula vegetal',
+        dosageInstruction: 'Ingerir 1 cápsula pela manhã junto a uma refeição rica em gorduras boas (abacate, ovos ou azeite).',
+        treatmentDuration: 'Uso contínuo (90 dias)',
+        quantity: '90 cápsulas',
+        administrationRoute: 'Oral'
+      },
+      {
+        id: 'rx_item_02',
+        medicineName: 'Resveratrol Trans + Quercetina',
+        concentration: '100 mg + 250 mg',
+        pharmaceuticalForm: 'Cápsula lipossomal',
+        dosageInstruction: 'Tomar 1 cápsula 30 minutos antes do almoço para modulação mitocondrial e proteção endotelial.',
+        treatmentDuration: '60 dias',
+        quantity: '60 cápsulas',
+        administrationRoute: 'Oral'
+      },
+      {
+        id: 'rx_item_03',
+        medicineName: 'Magnésio Dimalato',
+        concentration: '350 mg',
+        pharmaceuticalForm: 'Cápsula',
+        dosageInstruction: 'Tomar 1 cápsula 1 hora antes de dormir para auxílio neuromuscular e relaxamento das fibras vasculares.',
+        treatmentDuration: 'Uso contínuo',
+        quantity: '60 cápsulas',
+        administrationRoute: 'Oral'
+      }
+    ],
+    generalInstructions: 'Manipular em farmácia de manipulação com selo de boas práticas da ANVISA (RDC 67/2007). Manter em local seco e ao abrigo da luz solar direta.',
+    isSigned: true,
+    signatureHash: 'sha256_rx_7781a982c401',
+    createdAt: '2026-11-09T09:46:00.000Z'
+  },
+  {
+    id: 'rx_02',
+    organizationId: 'org_mureb_01',
+    branchId: 'branch_sp_jardins',
+    patientId: 'pat_02',
+    patientName: 'Marcos Vinicius Santos',
+    patientCpf: '142.890.312-55',
+    patientAddress: 'Alameda Santos, 1800 - Cerqueira César, São Paulo - SP',
+    professionalId: 'prof_newton',
+    professionalName: 'Dr. Newton Mureb',
+    professionalCouncil: 'CRM 84.320/SP · RQE 41.200',
+    type: 'controle_especial',
+    specialControlNotificationType: 'C1',
+    prescriptionDate: '2026-11-09',
+    validityDays: 30,
+    items: [
+      {
+        id: 'rx_item_04',
+        medicineName: 'Pregabalina',
+        concentration: '75 mg',
+        pharmaceuticalForm: 'Cápsula gelatinosa dura',
+        dosageInstruction: 'Tomar 1 cápsula à noite por 14 dias para manejo de dor neuropática periférica secundária.',
+        treatmentDuration: '14 dias',
+        quantity: '1 caixa com 14 cápsulas',
+        administrationRoute: 'Oral'
+      }
+    ],
+    generalInstructions: 'Receita de Controle Especial em 2 vias (Portaria SVS/MS nº 344/98). Válida por 30 dias em todo o território nacional. 1ª Via: Retenção da Farmácia / 2ª Via: Orientação ao Paciente.',
+    isSigned: true,
+    signatureHash: 'sha256_rx_ctrl_4418a09bc2',
+    buyerIdentification: {
+      name: '',
+      documentRg: '',
+      address: '',
+      phone: '',
+      city: 'São Paulo',
+      state: 'SP'
+    },
+    createdAt: '2026-11-09T14:40:00.000Z'
+  }
+];
+
+export const INITIAL_CERTIFICATES: MedicalCertificate[] = [
+  {
+    id: 'cert_01',
+    organizationId: 'org_mureb_01',
+    branchId: 'branch_sp_jardins',
+    patientId: 'pat_01',
+    patientName: 'Camila Albuquerque',
+    patientCpf: '318.492.018-44',
+    professionalId: 'prof_newton',
+    professionalName: 'Dr. Newton Mureb',
+    professionalCouncil: 'CRM 84.320/SP · RQE 41.200',
+    type: 'afastamento',
+    issueDate: '2026-11-09',
+    startDate: '2026-11-09',
+    daysOff: 2,
+    periodDescription: '2 (dois) dias para recuperação clínica e realização de bateria de exames diagnósticos com contraste e teste de esforço.',
+    cid10Code: 'E88.2',
+    cid10Description: 'Lipomatose e Lipedema não classificados em outra parte',
+    showCidOnPrint: false, // CFM 1.658/2002: Não impresso sem autorização expressa
+    purpose: 'Para fins de justificativa de ausência laboral perante o empregador.',
+    notes: 'Paciente orientada quanto ao repouso relativo com elevação dos membros inferiores.',
+    isSigned: true,
+    signatureHash: 'sha256_cert_9901aa882',
+    createdAt: '2026-11-09T09:47:00.000Z'
+  },
+  {
+    id: 'cert_02',
+    organizationId: 'org_mureb_01',
+    branchId: 'branch_sp_jardins',
+    patientId: 'pat_02',
+    patientName: 'Marcos Vinicius Santos',
+    patientCpf: '142.890.312-55',
+    professionalId: 'prof_newton',
+    professionalName: 'Dr. Newton Mureb',
+    professionalCouncil: 'CRM 84.320/SP · RQE 41.200',
+    type: 'aptidao_fisica',
+    issueDate: '2026-11-09',
+    activityPermitted: 'Musculação com sobrecarga progressiva supervisionada, pilates clínico e exercícios resistidos de alta intensidade para estímulo de hipertrofia muscular.',
+    cid10Code: 'Z02.5',
+    cid10Description: 'Exame para participação em atividades desportivas',
+    showCidOnPrint: true, // Autorizado expressamente pelo paciente
+    purpose: 'Para entrega e arquivamento em centro de treinamento funcional e academia.',
+    notes: 'Atesto que o paciente foi submetido a avaliação cardiovascular e metabólica encontrando-se apto.',
+    isSigned: true,
+    signatureHash: 'sha256_cert_5521bb117',
+    createdAt: '2026-11-09T14:42:00.000Z'
+  }
+];
+
+export const INITIAL_LAB_ORDERS: LabOrder[] = [
+  {
+    id: 'order_01',
+    organizationId: 'org_mureb_01',
+    branchId: 'branch_sp_jardins',
+    patientId: 'pat_01',
+    patientName: 'Camila Albuquerque',
+    patientCpf: '318.492.018-44',
+    professionalId: 'prof_newton',
+    professionalName: 'Dr. Newton Mureb',
+    professionalCouncil: 'CRM 84.320/SP',
+    orderDate: '2026-11-09',
+    clinicalIndication: 'Investigação etiológica de Lipedema Grau II, disfunção microvascular e esteatose hepática incipiente com resistência insulínica.',
+    items: [
+      { id: 'item_01', examName: 'Hemograma completo com plaquetas', examType: 'laboratorial', urgency: 'rotina' },
+      { id: 'item_02', examName: 'Curva Glicêmica e Insulinêmica (0, 60 e 120 min)', examType: 'laboratorial', urgency: 'rotina', observations: 'Jejum obrigatório de 10 a 12 horas.' },
+      { id: 'item_03', examName: 'Proteína C Reativa Ultrassensível (PCR-us)', examType: 'laboratorial', urgency: 'rotina' },
+      { id: 'item_04', examName: 'Ferritina Sérica e Transferrina', examType: 'laboratorial', urgency: 'rotina' },
+      { id: 'item_05', examName: 'Ultrassonografia com Doppler Colorido de Membros Inferiores (Sistema Venoso e Subcutâneo)', examType: 'imagem', urgency: 'rotina', observations: 'Avaliar espessamento do tecido adiposo suprafascial e descartar refluxo ostial safeno.' }
+    ],
+    notes: 'Exames essenciais para delimitação do plano de modulação nutricional e liberação de fisioterapia descongestiva.',
+    isSigned: true,
+    signatureHash: 'sha256_order_3389ff01',
+    status: 'requested',
+    createdAt: '2026-11-09T09:48:00.000Z'
+  }
+];
+
+export const INITIAL_EXAM_RESULTS: ExamResult[] = [
+  {
+    id: 'exam_res_01',
+    organizationId: 'org_mureb_01',
+    patientId: 'pat_01',
+    orderId: 'order_01',
+    examName: 'PCR Ultrassensível e Marcadores Inflamatórios',
+    examCategory: 'laboratorial',
+    performedDate: '2026-11-02',
+    laboratoryName: 'Laboratório Fleury - Unidade Itaim',
+    reportSummary: 'PCR-us: 3.4 mg/L (Referência de baixo risco < 1.0 mg/L). Ferritina: 185 ng/mL. Evidência laboratorial de inflamação subclínica crônica sistêmica compatível com disfunção do tecido adiposo.',
+    referenceValues: 'PCR-us: < 1.0 mg/L (Ótimo metabólico), 1.0 - 3.0 (Moderado), > 3.0 (Elevado)',
+    status: 'evaluated',
+    evaluatedByProfessionalName: 'Dr. Newton Mureb',
+    evaluatedAt: '2026-11-09T09:35:00.000Z',
+    notes: 'Correlacionado clinicamente na consulta de 09/11.',
+    createdAt: '2026-11-04T10:00:00.000Z'
+  },
+  {
+    id: 'exam_res_02',
+    organizationId: 'org_mureb_01',
+    patientId: 'pat_01',
+    examName: 'Bioimpedância Tetrapolar Segmentar InBody 770',
+    examCategory: 'imagem',
+    performedDate: '2026-11-09',
+    laboratoryName: 'Clínica Dr. Newton Mureb - Sala de Avaliação',
+    reportSummary: 'Massa muscular esquelética: 24.2 kg. Percentual de gordura corporal: 34.8%. Relação edema extracelular (ECW/TBW) nos membros inferiores: 0.398 (elevada, indicando acúmulo de líquido intersticial crônico).',
+    referenceValues: 'ECW/TBW normal: 0.360 a 0.390',
+    status: 'evaluated',
+    evaluatedByProfessionalName: 'Dr. Rodrigo Viana',
+    evaluatedAt: '2026-11-09T10:15:00.000Z',
+    notes: 'Exame de base para mensuração da resposta à fisioterapia.',
+    createdAt: '2026-11-09T10:20:00.000Z'
   }
 ];
 

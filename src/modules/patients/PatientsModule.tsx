@@ -139,17 +139,31 @@ export const PatientsModule: React.FC<PatientsModuleProps> = ({
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/70 transition">
                       
-                      {/* Name */}
+                      {/* Name & Clinical Tags */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-bold text-slate-900">{p.fullName}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{p.fullName}</span>
+                          {p.allergies && p.allergies.length > 0 && (
+                            <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded border border-rose-200" title={`Alergias: ${p.allergies.join(', ')}`}>
+                              ⚠️ {p.allergies.length} Alergia(s)
+                            </span>
+                          )}
+                        </div>
+                        {p.socialName && (
+                          <div className="text-[11px] text-sky-700 italic">Nome Social: {p.socialName}</div>
+                        )}
                         <span className="text-[11px] text-slate-500">
                           {p.birthDate ? `${new Date(p.birthDate + 'T00:00:00').toLocaleDateString('pt-BR')} · ${p.gender}` : p.gender}
+                          {p.bloodType && p.bloodType !== 'desconhecido' && ` · Tipo ${p.bloodType}`}
                         </span>
                       </td>
 
-                      {/* CPF */}
-                      <td className="py-3.5 px-4 whitespace-nowrap font-mono text-slate-700">
-                        {p.documentCpf}
+                      {/* CPF & Convênio */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="font-mono text-slate-700 font-medium">{p.documentCpf}</div>
+                        <span className="text-[10px] text-slate-500">
+                          {p.healthPlanType === 'convenio' ? `${p.healthPlanOperator || 'Convênio'}` : 'Particular'}
+                        </span>
                       </td>
 
                       {/* Contact */}
@@ -193,11 +207,11 @@ export const PatientsModule: React.FC<PatientsModuleProps> = ({
                           {onNavigateToRecord && (
                             <button
                               onClick={() => onNavigateToRecord(p)}
-                              className="px-2.5 py-1 text-xs font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition flex items-center gap-1"
-                              title="Abrir Prontuário"
+                              className="px-2.5 py-1 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg transition flex items-center gap-1"
+                              title="Abrir no Prontuário Eletrônico (PEP)"
                             >
                               <FileText className="w-3.5 h-3.5" />
-                              <span>Prontuário</span>
+                              <span>Prontuário (PEP)</span>
                             </button>
                           )}
 

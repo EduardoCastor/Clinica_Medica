@@ -159,20 +159,58 @@ export interface Patient {
   organizationId: string;
   originBranchId: string;
   fullName: string;
+  socialName?: string; // Nome Social (CFM / SUS)
   documentCpf: string;
+  documentRg?: string;
+  documentRgIssuer?: string; // Órgão Emissor / UF
   birthDate: string;
-  gender: string;
+  gender: string; // Exibição amigável
+  biologicalSex?: 'M' | 'F' | 'outro';
+  genderIdentity?: string;
+  maritalStatus?: 'solteiro' | 'casado' | 'uniao_estavel' | 'divorciado' | 'viuvo' | 'outro';
+  profession?: string;
+  nationality?: string;
+  naturalness?: string; // Naturalidade (Cidade/UF)
   phone: string;
   whatsapp: string;
   email: string;
   postalCode?: string;
   address?: string;
   addressNumber?: string;
+  complement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
+  
+  // Dados Clínicos Básicos e Triagem
+  bloodType?: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-' | 'desconhecido';
+  weightKg?: number;
+  heightCm?: number;
+  calculatedBmi?: number;
+  allergies?: string[]; // Alertas de alergias
+  chronicDiseases?: string[]; // Comorbidades
+  continuousMedications?: string[]; // Medicamentos contínuos
+
+  // Convênio / Financeiro
+  healthPlanType?: 'particular' | 'convenio';
+  healthPlanOperator?: string;
+  healthPlanNumber?: string;
+  healthPlanValidity?: string;
+  healthPlanCategory?: string;
+  cnsNumber?: string; // Cartão Nacional de Saúde
+
+  // Contato de Emergência e Responsável Legal
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  emergencyContactKinship?: string;
+  legalGuardianName?: string;
+  legalGuardianCpf?: string;
+  legalGuardianKinship?: string;
+  legalGuardianPhone?: string;
+
+  // LGPD & Auditoria
+  lgpdConsent?: boolean;
+  lgpdConsentDate?: string;
   administrativeNotes?: string;
   sharingMode: PatientSharingMode;
   authorizedBranchIds?: string[];
@@ -219,6 +257,30 @@ export interface WaitlistEntry {
   createdAt: string;
 }
 
+export interface VitalSigns {
+  bloodPressureSystolic?: number;   // PA Sistólica (ex: 120)
+  bloodPressureDiastolic?: number;  // PA Diastólica (ex: 80)
+  heartRateBpm?: number;            // FC (bpm)
+  respiratoryRateRpm?: number;      // FR (rpm)
+  temperatureCelsius?: number;      // Temp (°C)
+  oxygenSaturationPercent?: number; // SpO2 (%)
+  capillaryBloodGlucoseMgDl?: number; // Glicemia capilar (mg/dL)
+  weightKg?: number;
+  heightCm?: number;
+  bmi?: number;
+}
+
+export interface MedicalRecordAddendum {
+  id: string;
+  recordId: string;
+  authorId: string;
+  authorName: string;
+  authorCouncilNumber: string;
+  note: string;
+  createdAt: string;
+  signatureHash: string;
+}
+
 export interface MedicalRecordEntry {
   id: string;
   organizationId: string;
@@ -226,18 +288,155 @@ export interface MedicalRecordEntry {
   branchId: string;
   professionalId: string;
   professionalName: string;
+  professionalCouncilNumber?: string;
   appointmentId?: string;
   recordDate: string;
-  chiefComplaint: string;         // Queixa Principal
-  clinicalHistory: string;        // Anamnese / Histórico
-  physicalExam?: string;          // Avaliação / Exame Físico
-  diagnosticHypothesis?: string;  // Diagnóstico
-  therapeuticPlan: string;        // Plano Terapêutico
-  prescriptions: string;          // Prescrições e Suplementação
-  examRequests?: string;          // Pedidos de Exames
-  evolutionNotes?: string;        // Evolução
+  status: 'draft' | 'signed'; // Rascunho vs Assinado (CFM 1.638/2002 e 1.821/2007)
+  consultationType?: 'soap' | 'free_text';
+  
+  // Método SOAP
+  chiefComplaint: string;         // S: Queixa Principal & HDA
+  clinicalHistory: string;        // S: Anamnese, Hábitos, Antecedentes
+  vitalSigns?: VitalSigns;        // O: Sinais Vitais
+  physicalExam?: string;          // O: Exame Físico & Avaliação Funcional
+  diagnosticHypothesis?: string;  // A: Hipótese Diagnóstica & Avaliação
+  cid10Codes?: Array<{ code: string; description: string }>; // A: CIDs selecionados
+  therapeuticPlan: string;        // P: Plano Terapêutico & Condutas
+  prescriptions: string;          // Prescrições e Suplementação em texto
+  examRequests?: string;          // Pedidos de Exames em texto
+  evolutionNotes?: string;        // Notas de evolução
+  
+  // Imutabilidade e Adendos do CFM
+  isSigned: boolean;
+  signedAt?: string;
+  signatureHash?: string;
+  addendums?: MedicalRecordAddendum[]; // Erratas / Adendos pós-assinatura
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PrescriptionItem {
+  id: string;
+  medicineName: string;        // Nome do fármaco / princípio ativo
+  concentration: string;       // ex: 500mg, 10mg/mL
+  pharmaceuticalForm: string;  // Comprimido, Cápsula, Gotas, Solução Injetável, Creme
+  dosageInstruction: string;   // Posologia detalhada
+  treatmentDuration: string;   // Duração: 7 dias, contínuo, 30 dias
+  quantity: string;            // Quantidade: 1 caixa, 30 cápsulas, 2 frascos
+  administrationRoute: string; // Oral, Tópica, Inalatória, Intramuscular, Intravenosa, Sublingual
+}
+
+export interface Prescription {
+  id: string;
+  organizationId: string;
+  branchId: string;
+  patientId: string;
+  patientName: string;
+  patientCpf: string;
+  patientAddress?: string;
+  professionalId: string;
+  professionalName: string;
+  professionalCouncil: string;
+  type: 'simples' | 'controle_especial'; // ANVISA Portaria 344/98
+  specialControlNotificationType?: 'A1' | 'A2' | 'A3' | 'B1' | 'B2' | 'C1' | 'C2' | 'C5';
+  prescriptionDate: string;
+  validityDays: number; // 30 dias para controle especial
+  items: PrescriptionItem[];
+  generalInstructions?: string;
   isSigned: boolean;
   signatureHash?: string;
+  buyerIdentification?: {
+    name?: string;
+    documentRg?: string;
+    address?: string;
+    phone?: string;
+    city?: string;
+    state?: string;
+  };
+  createdAt: string;
+}
+
+export type CertificateType = 
+  | 'afastamento' 
+  | 'aptidao_fisica' 
+  | 'comparecimento' 
+  | 'acompanhante' 
+  | 'sanidade_mental';
+
+export interface MedicalCertificate {
+  id: string;
+  organizationId: string;
+  branchId: string;
+  patientId: string;
+  patientName: string;
+  patientCpf: string;
+  patientSocialName?: string;
+  professionalId: string;
+  professionalName: string;
+  professionalCouncil: string;
+  type: CertificateType;
+  issueDate: string;
+  startDate?: string;
+  daysOff?: number;
+  hoursOff?: string; // ex: 08:00 às 12:00
+  periodDescription?: string;
+  activityPermitted?: string; // para aptidão física
+  companionName?: string;     // para atestado de acompanhante
+  companionKinship?: string;
+  cid10Code?: string;         // Código CID-10 (salvo no prontuário)
+  cid10Description?: string;
+  showCidOnPrint: boolean;    // Resolução CFM nº 1.658/2002: apenas se solicitado expressamente pelo paciente
+  purpose?: string;           // Fins periciais, trabalhistas, acadêmicos
+  notes?: string;
+  isSigned: boolean;
+  signatureHash?: string;
+  createdAt: string;
+}
+
+export interface LabOrderItem {
+  id: string;
+  examName: string;
+  examType: 'laboratorial' | 'imagem' | 'outros';
+  urgency: 'rotina' | 'urgente';
+  observations?: string;
+}
+
+export interface LabOrder {
+  id: string;
+  organizationId: string;
+  branchId: string;
+  patientId: string;
+  patientName: string;
+  patientCpf: string;
+  professionalId: string;
+  professionalName: string;
+  professionalCouncil: string;
+  orderDate: string;
+  clinicalIndication: string; // Justificativa clínica (exigência convênios/CFM)
+  items: LabOrderItem[];
+  notes?: string;
+  isSigned: boolean;
+  signatureHash?: string;
+  status: 'requested' | 'completed' | 'cancelled';
+  createdAt: string;
+}
+
+export interface ExamResult {
+  id: string;
+  organizationId: string;
+  patientId: string;
+  orderId?: string;
+  examName: string;
+  examCategory: 'laboratorial' | 'imagem' | 'outros';
+  performedDate: string;
+  laboratoryName: string;
+  reportSummary: string; // Laudo / Conclusão
+  referenceValues?: string;
+  status: 'performed' | 'evaluated' | 'critical';
+  attachmentUrl?: string; // Link / Arquivo
+  evaluatedByProfessionalName?: string;
+  evaluatedAt?: string;
+  notes?: string;
   createdAt: string;
 }
 
