@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Organization, Clinic, Branch, Plan } from '../types';
+import { Organization, Clinic, Branch, Plan, ResolvedTenantContext } from '../types';
 import { StorageService } from '../services/storage';
+import { DomainResolver } from '../services/domainResolver';
 
 interface TenantContextType {
   organization: Organization;
@@ -9,6 +10,7 @@ interface TenantContextType {
   plans: Plan[];
   activeBranchId: string; // 'all' or specific branch ID
   activeBranch: Branch | null;
+  tenantContext: ResolvedTenantContext;
   setActiveBranchId: (id: string) => void;
   updateClinic: (data: Partial<Clinic>) => void;
   updateOrganization: (data: Partial<Organization>) => void;
@@ -23,6 +25,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [branches, setBranches] = useState<Branch[]>(StorageService.getBranches());
   const [plans, setPlans] = useState<Plan[]>(StorageService.getPlans());
   const [activeBranchId, setActiveBranchIdState] = useState<string>(StorageService.getActiveBranchId());
+  const [tenantContext, setTenantContext] = useState<ResolvedTenantContext>(DomainResolver.resolveTenant());
 
   const refreshData = () => {
     setOrganization(StorageService.getOrganization());
@@ -30,11 +33,16 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setBranches(StorageService.getBranches());
     setPlans(StorageService.getPlans());
     setActiveBranchIdState(StorageService.getActiveBranchId());
+    setTenantContext(DomainResolver.resolveTenant());
   };
 
   useEffect(() => {
     window.addEventListener('medsync_storage_update', refreshData);
-    return () => window.removeEventListener('medsync_storage_update', refreshData);
+    window.addEventListener('medsync_domain_simulation_changed', refreshData);
+    return () => {
+      window.removeEventListener('medsync_storage_update', refreshData);
+      window.removeEventListener('medsync_domain_simulation_changed', refreshData);
+    };
   }, []);
 
   const setActiveBranchId = (id: string) => {
@@ -65,6 +73,7 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         plans,
         activeBranchId,
         activeBranch,
+        tenantContext,
         setActiveBranchId,
         updateClinic,
         updateOrganization,

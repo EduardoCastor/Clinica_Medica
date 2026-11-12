@@ -351,9 +351,9 @@ export const ClinicSettings: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
           {/* Painel do Sistema (app.*) */}
-          {domains.find(d => d.domainType === 'app') ? (
+          {domains.find(d => d.domainType === 'app' || d.domainType === 'clinic_app') ? (
             (() => {
-              const appDom = domains.find(d => d.domainType === 'app')!;
+              const appDom = domains.find(d => d.domainType === 'app' || d.domainType === 'clinic_app')!;
               return (
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">
@@ -401,9 +401,9 @@ export const ClinicSettings: React.FC = () => {
           )}
 
           {/* Site Institucional (www.*) */}
-          {domains.find(d => d.domainType === 'website') ? (
+          {domains.find(d => d.domainType === 'website' || d.domainType === 'clinic_website') ? (
             (() => {
-              const webDom = domains.find(d => d.domainType === 'website')!;
+              const webDom = domains.find(d => d.domainType === 'website' || d.domainType === 'clinic_website')!;
               return (
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                   <div className="flex items-center justify-between">

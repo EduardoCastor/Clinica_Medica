@@ -13,11 +13,13 @@ import {
   Lock,
   PauseCircle,
   PlayCircle,
-  Globe
+  Globe,
+  UserCheck
 } from 'lucide-react';
 import { Plan, Organization } from '../../types';
 import { StorageService } from '../../services/storage';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { DomainsManagement } from './DomainsManagement';
 
 interface SaasAdminDashboardProps {
@@ -26,6 +28,7 @@ interface SaasAdminDashboardProps {
 
 export const SaasAdminDashboard: React.FC<SaasAdminDashboardProps> = ({ onSimulateDomain }) => {
   const { plans, organization, updateOrganization } = useTenant();
+  const { impersonateClinic } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'domains'>('domains');
   const [plansList, setPlansList] = useState<Plan[]>(StorageService.getPlans());
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
@@ -227,16 +230,26 @@ export const SaasAdminDashboard: React.FC<SaasAdminDashboardProps> = ({ onSimula
                   Renova em 09/11/2027
                 </td>
                 <td className="py-3 px-4 text-right">
-                  <button
-                    onClick={toggleTenantStatus}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition ${
-                      organization.status === 'active'
-                        ? 'text-rose-600 hover:bg-rose-50 border border-rose-200'
-                        : 'text-emerald-600 hover:bg-emerald-50 border border-emerald-200'
-                    }`}
-                  >
-                    {organization.status === 'active' ? 'Suspender Conta' : 'Reativar Conta'}
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => impersonateClinic('clinic_mureb_01')}
+                      className="px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition inline-flex items-center gap-1.5 shadow-2xs"
+                      title="Acessar o ERP operacional da clínica em modo suporte"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Acessar como Suporte (Impersonate)</span>
+                    </button>
+                    <button
+                      onClick={toggleTenantStatus}
+                      className={`px-3 py-1 text-xs font-semibold rounded-lg transition ${
+                        organization.status === 'active'
+                          ? 'text-rose-600 hover:bg-rose-50 border border-rose-200'
+                          : 'text-emerald-600 hover:bg-emerald-50 border border-emerald-200'
+                      }`}
+                    >
+                      {organization.status === 'active' ? 'Suspender' : 'Reativar'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>

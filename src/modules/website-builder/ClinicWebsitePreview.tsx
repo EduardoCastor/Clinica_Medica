@@ -14,17 +14,21 @@ import {
   ArrowRight, 
   MessageSquare,
   ChevronDown,
-  X
+  X,
+  User
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { WebsiteConfig, ColorPalette, Appointment } from '../../types';
+import { PatientPortal } from '../patient-portal/PatientPortal';
 
 interface ClinicWebsitePreviewProps {
   onBackToPanel?: () => void;
+  isProduction?: boolean;
 }
 
-export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBackToPanel }) => {
+export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBackToPanel, isProduction = false }) => {
   const [config, setConfig] = useState<WebsiteConfig>(StorageService.getWebsite());
+  const [isPatientPortalOpen, setIsPatientPortalOpen] = useState(false);
   const clinic = StorageService.getClinic();
   const branches = StorageService.getBranches();
   const professionals = StorageService.getProfessionals();
@@ -168,47 +172,47 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
   return (
     <div className="min-h-screen bg-white text-slate-800 font-sans">
       
-      {/* Floating Control Bar for Demo / Testing Palette */}
-      <div className="bg-slate-900 text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 sticky top-16 z-30">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sky-400">Site Institucional White-Label:</span>
-          <span className="text-slate-300">{config.title}</span>
-          <span className="text-slate-500">({config.customDomain})</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">Paleta Ativa:</span>
-            <select
-              value={config.paletteName}
-              onChange={(e) => {
-                const next = { ...config, paletteName: e.target.value as ColorPalette };
-                setConfig(next);
-                StorageService.updateWebsite(next);
-              }}
-              className="bg-slate-800 text-white px-2.5 py-1 rounded-md border border-slate-700 text-xs focus:ring-1 focus:ring-sky-500 font-medium"
-            >
-              <option value="azul-clinico">1. Azul-Clínico</option>
-              <option value="verde-saude">2. Verde-Saúde</option>
-              <option value="elegancia">3. Elegância</option>
-              <option value="minimalista">4. Minimalista</option>
-              <option value="natural">5. Natural</option>
-            </select>
+      {/* Floating Control Bar for Demo / Testing Palette (Only visible in editor preview) */}
+      {!isProduction && onBackToPanel && (
+        <div className="bg-slate-900 text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 sticky top-16 z-30">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sky-400">Site Institucional White-Label:</span>
+            <span className="text-slate-300">{config.title}</span>
+            <span className="text-slate-500">({config.customDomain})</span>
           </div>
 
-          {onBackToPanel && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400">Paleta Ativa:</span>
+              <select
+                value={config.paletteName}
+                onChange={(e) => {
+                  const next = { ...config, paletteName: e.target.value as ColorPalette };
+                  setConfig(next);
+                  StorageService.updateWebsite(next);
+                }}
+                className="bg-slate-800 text-white px-2.5 py-1 rounded-md border border-slate-700 text-xs focus:ring-1 focus:ring-sky-500 font-medium"
+              >
+                <option value="azul-clinico">1. Azul-Clínico</option>
+                <option value="verde-saude">2. Verde-Saúde</option>
+                <option value="elegancia">3. Elegância</option>
+                <option value="minimalista">4. Minimalista</option>
+                <option value="natural">5. Natural</option>
+              </select>
+            </div>
+
             <button
               onClick={onBackToPanel}
               className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-md transition font-medium"
             >
               Voltar ao Painel
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Website Top Bar */}
-      <header className={`border-b border-slate-200/80 sticky top-26 z-20 backdrop-blur-md ${theme.headerBg}`}>
+      <header className={`border-b border-slate-200/80 sticky ${!isProduction && onBackToPanel ? 'top-26' : 'top-0'} z-20 backdrop-blur-md ${theme.headerBg}`}>
         <div className="max-w-6xl mx-auto px-6 h-18 flex items-center justify-between gap-8">
           
           {/* Brand */}
@@ -234,8 +238,16 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
             <a href="#unidades" className="hover:text-slate-900 transition whitespace-nowrap">Unidades SP & RJ</a>
           </nav>
 
-          {/* Booking CTA Button */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Action CTAs */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => setIsPatientPortalOpen(true)}
+              className="px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 border border-slate-300 rounded-xl transition flex items-center gap-1.5 bg-white shadow-2xs hover:bg-slate-50"
+            >
+              <User className="w-3.5 h-3.5 text-slate-500" />
+              <span>Portal do Paciente</span>
+            </button>
+
             <button
               onClick={() => {
                 setBookingSuccess(false);
@@ -627,6 +639,32 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
               </form>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* Patient Portal Modal */}
+      {isPatientPortalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-sky-400" />
+                <span className="font-bold text-xs uppercase tracking-wider">
+                  Portal do Paciente · {clinic.tradeName}
+                </span>
+              </div>
+              <button
+                onClick={() => setIsPatientPortalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                title="Fechar portal do paciente"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+              <PatientPortal />
+            </div>
           </div>
         </div>
       )}

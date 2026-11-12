@@ -521,7 +521,13 @@ export interface AuditLog {
   timestamp: string;
 }
 
-export type DomainType = 'app' | 'website';
+export type DomainType = 'clinic_app' | 'clinic_website' | 'app' | 'website';
+
+export type AppEnvironmentMode = 
+  | 'SAAS_LANDING'    // medsync.beaverstraining.com.br
+  | 'SAAS_ADMIN'      // painelclinica.beaverstraining.com.br
+  | 'CLINIC_APP'      // app.drnewtonmureb.com.br
+  | 'CLINIC_WEBSITE';  // www.drnewtonmureb.com.br
 
 export type DnsStatus = 'pending' | 'dns_configured' | 'propagating' | 'verified' | 'error';
 
@@ -548,10 +554,12 @@ export interface ClinicDomain {
 
 export interface ResolvedTenantContext {
   resolved: boolean;
-  domain?: ClinicDomain;
+  mode: AppEnvironmentMode;
   environment: 'app' | 'website' | 'saas_root';
+  domain?: ClinicDomain;
   organizationId?: string;
   clinicId?: string;
   isSimulation?: boolean;
+  impersonatingClinicId?: string;
 }
 

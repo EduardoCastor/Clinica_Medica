@@ -110,7 +110,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
       verificationToken: `medsync-verify-${Math.random().toString(36).substring(2, 10)}`,
       dnsStatus: 'pending',
       sslStatus: 'pending',
-      expectedCname: 'cname.medsync.io',
+      expectedCname: 'cname.vercel-dns.com',
       createdAt: new Date().toISOString(),
     };
 
@@ -237,7 +237,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
 
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">CNAME Base SaaS</span>
-          <div className="text-xs font-mono font-bold text-sky-700 mt-2 truncate">cname.medsync.io</div>
+          <div className="text-xs font-mono font-bold text-sky-700 mt-2 truncate">cname.vercel-dns.com</div>
           <span className="text-[11px] text-slate-400 mt-0.5 block">Anycast Edge Routing</span>
         </div>
       </div>
@@ -299,10 +299,10 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
 
                   {/* Domain Type */}
                   <td className="py-3.5 px-4">
-                    {dom.domainType === 'app' ? (
+                    {dom.domainType === 'app' || dom.domainType === 'clinic_app' ? (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 font-semibold text-[11px]">
                         <Server className="w-3.5 h-3.5" />
-                        <span>Painel do Sistema</span>
+                        <span>Painel ERP da Clínica</span>
                       </div>
                     ) : (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 font-semibold text-[11px]">
@@ -441,12 +441,12 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span className="font-bold text-slate-900 block flex items-center gap-1.5">
               <Server className="w-3.5 h-3.5 text-sky-600" />
-              1. Painel Administrativo (Ex: app.drnewtonmureb.com.br)
+              1. Painel Administrativo da Clínica (Ex: app.drnewtonmureb.com.br)
             </span>
             <div className="space-y-1 font-mono text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
               <p>Tipo: <strong className="text-slate-900">CNAME</strong></p>
               <p>Nome/Host: <strong className="text-slate-900">app</strong></p>
-              <p>Destino: <strong className="text-sky-700">cname.medsync.io</strong></p>
+              <p>Destino: <strong className="text-sky-700">cname.vercel-dns.com</strong></p>
               <p>Proxy/Nuvem: <strong className="text-slate-900">DNS Only (Desativado)</strong></p>
             </div>
           </div>
@@ -459,7 +459,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
             <div className="space-y-1 font-mono text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
               <p>Tipo: <strong className="text-slate-900">CNAME</strong></p>
               <p>Nome/Host: <strong className="text-slate-900">www</strong></p>
-              <p>Destino: <strong className="text-sky-700">cname.medsync.io</strong></p>
+              <p>Destino: <strong className="text-sky-700">cname.vercel-dns.com</strong></p>
               <p>Proxy/Nuvem: <strong className="text-slate-900">DNS Only (Desativado)</strong></p>
             </div>
           </div>

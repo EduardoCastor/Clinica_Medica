@@ -716,7 +716,24 @@ export const StorageService = {
 
   findDomainByName: (domainName: string): ClinicDomain | undefined => {
     const normalized = domainName.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
-    return StorageService.getClinicDomains().find(d => d.domain.toLowerCase() === normalized && d.isActive);
+    const domains = StorageService.getClinicDomains().filter(d => d.isActive);
+    
+    // 1. Exact match
+    const exact = domains.find(d => d.domain.toLowerCase() === normalized);
+    if (exact) return exact;
+
+    // 2. Try adding or removing www.
+    if (normalized.startsWith('www.')) {
+      const stripped = normalized.substring(4);
+      const matchStripped = domains.find(d => d.domain.toLowerCase() === stripped);
+      if (matchStripped) return matchStripped;
+    } else {
+      const withWww = `www.${normalized}`;
+      const matchWithWww = domains.find(d => d.domain.toLowerCase() === withWww);
+      if (matchWithWww) return matchWithWww;
+    }
+
+    return undefined;
   }
 };
 
