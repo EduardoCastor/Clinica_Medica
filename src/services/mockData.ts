@@ -77,6 +77,7 @@ export const INITIAL_PLANS: Plan[] = [
     hasCustomWebsite: true,
     hasFinancialModule: true,
     hasAdvancedReports: true,
+    isPopular: true,
     isActive: true,
   }
 ];

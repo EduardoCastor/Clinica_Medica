@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Activity, 
   Check, 
@@ -15,7 +15,7 @@ import {
   Layers,
   ChevronDown
 } from 'lucide-react';
-import { Plan } from '../../types';
+import { Plan, SaasPlan } from '../../types';
 import { StorageService } from '../../services/storage';
 
 interface LandingPageProps {
@@ -24,8 +24,23 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAccessSuperAdmin }) => {
-  const plans = StorageService.getPlans();
+  const [plans, setPlans] = useState<SaasPlan[]>(() => StorageService.getPlans());
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Dynamically sync plans from storage or remote events
+  useEffect(() => {
+    const syncPlans = () => {
+      setPlans(StorageService.getPlans());
+    };
+    
+    syncPlans();
+    window.addEventListener('medsync-plans-updated', syncPlans);
+    window.addEventListener('medsync_storage_update', syncPlans);
+    return () => {
+      window.removeEventListener('medsync-plans-updated', syncPlans);
+      window.removeEventListener('medsync_storage_update', syncPlans);
+    };
+  }, []);
 
   // Sign up modal for new clinics
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -183,43 +198,89 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAcce
 
       {/* Pricing Section (Section 4.1) */}
       <section id="planos" className="py-20 px-6 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-5xl mx-auto space-y-12">
+        <div className="max-w-5xl mx-auto space-y-10">
           
           <div className="text-center space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-sky-600">Planos e Preços Transparentes</span>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900">
               Escolha o Plano Ideal para a Sua Estrutura
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Sem fidelidade, cancele quando quiser.
+            <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+              Sem taxas escondidas. Cancele ou altere de plano quando quiser diretamente pelo painel.
             </p>
+
+            {/* Monthly / Yearly Billing Toggle */}
+            <div className="pt-3 flex items-center justify-center">
+              <div className="bg-slate-200/80 p-1 rounded-xl flex items-center gap-1 border border-slate-300/60 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+                    billingCycle === 'monthly'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Mensal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    billingCycle === 'yearly'
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>Anual</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase ${
+                    billingCycle === 'yearly' ? 'bg-sky-500 text-white' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    Até 20% OFF
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Plan Cards */}
+          {/* Dynamic Plan Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-            {plans.map((plan) => {
-              const isAdvanced = plan.code === 'advanced';
-              const isTrial = plan.code === 'trial';
+            {plans.filter(p => p.isActive !== false).map((plan) => {
+              const isPopular = Boolean(plan.isPopular || plan.code === 'advanced');
+              const isTrial = plan.code === 'trial' || plan.priceMonthly === 0;
+
+              // Price calculations based on billingCycle
+              let displayPrice = plan.priceMonthly;
+              let priceSubtitle = '/mês';
+
+              if (isTrial) {
+                displayPrice = 0;
+                priceSubtitle = `/${plan.trialDays || 10} dias grátis`;
+              } else if (billingCycle === 'yearly') {
+                displayPrice = plan.priceYearly > 0 ? plan.priceYearly / 12 : plan.priceMonthly;
+                priceSubtitle = '/mês*';
+              }
 
               return (
                 <div
                   key={plan.id}
                   className={`rounded-2xl p-6 flex flex-col justify-between transition relative ${
-                    isAdvanced
+                    isPopular
                       ? 'bg-slate-900 text-white shadow-xl border-2 border-sky-500'
                       : 'bg-white text-slate-800 border border-slate-200 shadow-xs'
                   }`}
                 >
-                  {isAdvanced && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-[10px] font-bold text-white bg-sky-600 rounded-full uppercase tracking-wider shadow-sm">
-                      Mais Escolhido
+                  {isPopular && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-[10px] font-bold text-white bg-sky-600 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-300" />
+                      <span>Mais Escolhido</span>
                     </span>
                   )}
 
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-base font-bold">{plan.name}</h3>
-                      <p className={`text-xs mt-1 ${isAdvanced ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <p className={`text-xs mt-1 leading-relaxed ${isPopular ? 'text-slate-400' : 'text-slate-500'}`}>
                         {plan.description}
                       </p>
                     </div>
@@ -228,42 +289,59 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAcce
                       <div className="flex items-baseline gap-1">
                         <span className="text-xs font-semibold">R$</span>
                         <span className="text-3xl font-extrabold tabular-nums">
-                          {plan.priceMonthly === 0 ? '0' : plan.priceMonthly.toFixed(2)}
+                          {displayPrice === 0 ? '0' : displayPrice.toFixed(2)}
                         </span>
-                        <span className={`text-xs ${isAdvanced ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {isTrial ? '/10 dias grátis' : '/mês'}
+                        <span className={`text-xs ${isPopular ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {priceSubtitle}
                         </span>
                       </div>
+                      {!isTrial && billingCycle === 'yearly' && plan.priceYearly > 0 && (
+                        <span className="text-[11px] text-slate-400 block mt-1 font-mono">
+                          Cobrado R$ {plan.priceYearly.toFixed(2)} anualmente
+                        </span>
+                      )}
                     </div>
 
-                    <div className="h-px bg-slate-200/40 my-3" />
+                    <div className={`h-px my-3 ${isPopular ? 'bg-slate-800' : 'bg-slate-100'}`} />
 
-                    {/* Features List */}
+                    {/* Dynamic Features List */}
                     <ul className="space-y-2.5 text-xs">
                       <li className="flex items-center gap-2">
-                        <Check className={`w-4 h-4 shrink-0 ${isAdvanced ? 'text-sky-400' : 'text-sky-600'}`} />
+                        <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
                         <span>Até <strong>{plan.maxBranches}</strong> {plan.maxBranches === 1 ? 'filial/unidade' : 'filiais integradas'}</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <Check className={`w-4 h-4 shrink-0 ${isAdvanced ? 'text-sky-400' : 'text-sky-600'}`} />
-                        <span>Até <strong>{plan.maxUsers}</strong> usuários do sistema</span>
+                        <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
+                        <span>Até <strong>{plan.maxUsers}</strong> usuários simultâneos</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <Check className={`w-4 h-4 shrink-0 ${isAdvanced ? 'text-sky-400' : 'text-sky-600'}`} />
+                        <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
                         <span>Até <strong>{plan.maxPatients}</strong> pacientes ativos</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <Check className={`w-4 h-4 shrink-0 ${isAdvanced ? 'text-sky-400' : 'text-sky-600'}`} />
+                        <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
                         <span>{plan.hasPatientSharing ? 'Compartilhamento Modelo A & B' : 'Modelo A Exclusivo'}</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <Check className={`w-4 h-4 shrink-0 ${isAdvanced ? 'text-sky-400' : 'text-sky-600'}`} />
-                        <span>Site Institucional White-Label</span>
+                        <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
+                        <span>{plan.hasCustomWebsite ? 'Site Institucional White-Label' : 'Site básico'}</span>
                       </li>
                       <li className="flex items-center gap-2">
-                        <Check className={`w-4 h-4 shrink-0 ${isAdvanced ? 'text-sky-400' : 'text-sky-600'}`} />
-                        <span>{plan.hasWhatsAppAutomation ? 'Automação WhatsApp Business' : 'WhatsApp manual'}</span>
+                        <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
+                        <span>{plan.hasWhatsAppAutomation ? 'Automação WhatsApp API Oficial' : 'WhatsApp manual'}</span>
                       </li>
+                      {plan.hasFinancialModule && (
+                        <li className="flex items-center gap-2">
+                          <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
+                          <span>Módulo Financeiro & Livro Caixa</span>
+                        </li>
+                      )}
+                      {plan.hasAdvancedReports && (
+                        <li className="flex items-center gap-2">
+                          <Check className={`w-4 h-4 shrink-0 ${isPopular ? 'text-sky-400' : 'text-sky-600'}`} />
+                          <span>Relatórios Gerenciais Avançados & BI</span>
+                        </li>
+                      )}
                     </ul>
                   </div>
 
@@ -273,13 +351,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAcce
                         setSelectedPlanCode(plan.code);
                         setIsRegisterModalOpen(true);
                       }}
-                      className={`w-full py-2.5 px-4 text-xs font-bold rounded-xl transition ${
-                        isAdvanced
+                      className={`w-full py-2.5 px-4 text-xs font-bold rounded-xl transition shadow-xs ${
+                        isPopular
                           ? 'bg-sky-500 hover:bg-sky-400 text-white'
                           : 'bg-slate-900 hover:bg-slate-800 text-white'
                       }`}
                     >
-                      {isTrial ? 'Iniciar Teste de 10 Dias' : 'Contratar Plano'}
+                      {isTrial ? 'Iniciar Teste Grátis' : `Contratar ${plan.name}`}
                     </button>
                   </div>
                 </div>
@@ -392,11 +470,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAcce
                 <select
                   value={selectedPlanCode}
                   onChange={(e) => setSelectedPlanCode(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 font-medium"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 font-medium text-slate-900"
                 >
-                  <option value="trial">Plano Teste Grátis (10 dias completos sem custo)</option>
-                  <option value="basic">Plano Básico (R$ 249/mês)</option>
-                  <option value="advanced">Plano Avançado Multiunidade (R$ 589/mês)</option>
+                  {plans.filter(p => p.isActive !== false).map((p) => (
+                    <option key={p.id} value={p.code}>
+                      {p.name} {p.priceMonthly > 0 ? `(R$ ${p.priceMonthly.toFixed(2)}/mês)` : `(${p.trialDays || 10} dias de teste grátis)`}
+                    </option>
+                  ))}
                 </select>
               </div>
 

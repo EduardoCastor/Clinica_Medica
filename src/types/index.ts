@@ -23,7 +23,7 @@ export type ColorPalette = 'azul-clinico' | 'verde-saude' | 'elegancia' | 'minim
 
 export interface Plan {
   id: string;
-  code: 'trial' | 'basic' | 'advanced';
+  code: 'trial' | 'basic' | 'advanced' | string;
   name: string;
   description: string;
   priceMonthly: number;
@@ -34,11 +34,16 @@ export interface Plan {
   maxPatients: number;
   hasPatientSharing: boolean;
   hasWhatsAppAutomation: boolean;
+  hasWhatsappAutomation?: boolean;
   hasCustomWebsite: boolean;
   hasFinancialModule: boolean;
   hasAdvancedReports: boolean;
+  isPopular?: boolean;
+  features?: string[];
   isActive: boolean;
 }
+
+export type SaasPlan = Plan;
 
 export interface Organization {
   id: string;
