@@ -245,7 +245,8 @@ export const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     onClose();
   };
 
-  const branchRooms = rooms.filter((r) => r.branchId === branchId);
+  const matchedBranchRooms = rooms.filter((r) => r.branchId === branchId);
+  const branchRooms = matchedBranchRooms.length > 0 ? matchedBranchRooms : rooms;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">

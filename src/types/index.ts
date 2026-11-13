@@ -229,6 +229,7 @@ export interface Appointment {
   id: string;
   organizationId: string;
   branchId: string;
+  branchName?: string;
   patientId: string;
   patientName: string;
   patientPhone: string;

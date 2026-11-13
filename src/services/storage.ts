@@ -261,6 +261,13 @@ export function getLastPlanSyncError(): string | null {
   return lastPlanSyncError;
 }
 
+export interface CloudAppointmentsSyncResult {
+  appointments: Appointment[];
+  source: 'supabase' | 'local_fallback';
+  error?: string;
+  count: number;
+}
+
 function mapDbPlanToPlan(row: Record<string, unknown>, localFallback?: Plan): Plan {
   const code = String(row.code || row.id || '');
   const hasWhatsapp = Boolean(row.has_whatsapp_automation ?? row.hasWhatsAppAutomation);
@@ -1195,98 +1202,158 @@ export const StorageService = {
   // Supabase Cloud Sync: Appointments & Waitlist (with localStorage fallback)
   // =========================================================================
 
-  fetchAppointmentsFromCloud: async (dateFilter?: string): Promise<Appointment[]> => {
+  fetchAppointmentsFromCloudDetailed: async (
+    dateFilter?: string
+  ): Promise<CloudAppointmentsSyncResult> => {
     const localList = StorageService.getAppointments();
     const supabase = getSupabase();
-    if (!supabase) return localList;
+    if (!supabase) {
+      return {
+        appointments: localList,
+        source: 'local_fallback',
+        error:
+          'Supabase não configurado nesta sessão (verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY ou configure via ícone de Banco de Dados).',
+        count: 0,
+      };
+    }
+
+    const extractJoin = (val: unknown): Record<string, unknown> | null => {
+      if (!val) return null;
+      if (Array.isArray(val)) return (val[0] as Record<string, unknown>) || null;
+      if (typeof val === 'object') return val as Record<string, unknown>;
+      return null;
+    };
 
     try {
-      let query = supabase
+      // 1. Primary query using aliased left-joins without any mock organization_id filter
+      let primaryQuery = supabase
         .from('appointments')
         .select(
           `
-          id,
-          organization_id,
-          branch_id,
-          patient_id,
-          professional_id,
-          service_id,
-          room_id,
-          start_time,
-          end_time,
-          status,
-          appointment_type,
-          notes,
-          cancellation_reason,
-          created_at,
-          patients (
-            id,
-            full_name,
-            phone,
-            whatsapp,
-            document_cpf,
-            email,
-            health_plan_type
-          ),
-          services (
-            id,
-            name
-          ),
-          rooms (
-            id,
-            name
-          ),
-          professionals (
-            id,
-            full_name
-          ),
-          branches (
-            id,
-            name
-          )
+          *,
+          patient:patients (id, full_name, phone, whatsapp, document_cpf, email, health_plan_type),
+          professional:professionals (id, full_name, council_number),
+          branch:branches (id, name),
+          service:services (id, name)
         `
         )
         .order('start_time', { ascending: true });
 
       if (dateFilter) {
-        query = query
+        primaryQuery = primaryQuery
           .gte('start_time', `${dateFilter}T00:00:00`)
           .lte('start_time', `${dateFilter}T23:59:59.999`);
       }
 
-      const { data, error } = await query;
-      if (error || !data) {
-        if (error) {
-          console.warn('Erro ao buscar agendamentos no Supabase:', error.message);
+      let { data: appointmentsData, error: appError } = await primaryQuery;
+
+      // 2. Cloud fallback 1: join only patients if any auxiliary table/column (branches/services/professionals) fails
+      if (appError) {
+        console.warn('Primary appointments join failed, trying patient-only join:', appError.message);
+        let fallbackPatientQuery = supabase
+          .from('appointments')
+          .select('*, patient:patients (*)')
+          .order('start_time', { ascending: true });
+
+        if (dateFilter) {
+          fallbackPatientQuery = fallbackPatientQuery
+            .gte('start_time', `${dateFilter}T00:00:00`)
+            .lte('start_time', `${dateFilter}T23:59:59.999`);
         }
-        return localList;
+
+        const res1 = await fallbackPatientQuery;
+        appointmentsData = res1.data;
+        appError = res1.error;
+      }
+
+      // 3. Cloud fallback 2: flat select(*) on appointments + separate patients lookup
+      const patientsById = new Map<string, Record<string, unknown>>();
+      if (appError) {
+        console.warn('Patient join failed, trying flat appointments select(*):', appError.message);
+        let flatQuery = supabase
+          .from('appointments')
+          .select('*')
+          .order('start_time', { ascending: true });
+
+        if (dateFilter) {
+          flatQuery = flatQuery
+            .gte('start_time', `${dateFilter}T00:00:00`)
+            .lte('start_time', `${dateFilter}T23:59:59.999`);
+        }
+
+        const res2 = await flatQuery;
+        appointmentsData = res2.data;
+        appError = res2.error;
+
+        if (!appError && appointmentsData && appointmentsData.length > 0) {
+          const { data: patientsRows } = await supabase
+            .from('patients')
+            .select('id, full_name, phone, whatsapp, document_cpf, email, health_plan_type');
+          if (Array.isArray(patientsRows)) {
+            for (const patRow of patientsRows as Array<Record<string, unknown>>) {
+              if (patRow.id) {
+                patientsById.set(String(patRow.id), patRow);
+              }
+            }
+          }
+        }
+      }
+
+      if (appError || !appointmentsData) {
+        const errMsg = appError?.message || 'Erro desconhecido ao consultar public.appointments.';
+        console.warn('Erro ao buscar agendamentos no Supabase:', errMsg);
+        return {
+          appointments: localList,
+          source: 'local_fallback',
+          error: errMsg,
+          count: 0,
+        };
       }
 
       const branches = StorageService.getBranches();
       const defaultBranchId = branches[0]?.id || 'branch_cf_centro';
+      const defaultBranchName = branches[0]?.name || 'Unidade Matriz Cabo Frio (Centro)';
 
-      const cloudAppointments: Appointment[] = (data as Array<Record<string, unknown>>).map((row) => {
-        const patientJoin = Array.isArray(row.patients)
-          ? (row.patients[0] as Record<string, unknown> | undefined)
-          : (row.patients as Record<string, unknown> | null);
-        const serviceJoin = Array.isArray(row.services)
-          ? (row.services[0] as Record<string, unknown> | undefined)
-          : (row.services as Record<string, unknown> | null);
-        const roomJoin = Array.isArray(row.rooms)
-          ? (row.rooms[0] as Record<string, unknown> | undefined)
-          : (row.rooms as Record<string, unknown> | null);
-        const profJoin = Array.isArray(row.professionals)
-          ? (row.professionals[0] as Record<string, unknown> | undefined)
-          : (row.professionals as Record<string, unknown> | null);
+      const cachedPatients = getStored<Patient[]>(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+      let patientsCacheDirty = false;
 
-        // Ensure linked patient exists in localStorage cache for quick PEP navigation
+      const cloudAppointments: Appointment[] = (
+        appointmentsData as Array<Record<string, unknown>>
+      ).map((row) => {
+        const patientJoin =
+          extractJoin(row.patient) ||
+          extractJoin(row.patients) ||
+          (row.patient_id ? patientsById.get(String(row.patient_id)) || null : null);
+        const serviceJoin = extractJoin(row.service) || extractJoin(row.services);
+        const profJoin = extractJoin(row.professional) || extractJoin(row.professionals);
+        const branchJoin = extractJoin(row.branch) || extractJoin(row.branches);
+        const roomJoin = extractJoin(row.room) || extractJoin(row.rooms);
+
+        const resolvedPatientId = String(row.patient_id || patientJoin?.id || '');
+        const resolvedPatientName = String(
+          patientJoin?.full_name ||
+            row.patient_name ||
+            row.nome ||
+            'Paciente Online'
+        );
+        const resolvedPatientPhone = String(
+          patientJoin?.whatsapp ||
+            patientJoin?.phone ||
+            row.patient_phone ||
+            row.whatsapp ||
+            row.phone ||
+            row.celular ||
+            ''
+        );
+
+        // Cache real patient in localStorage once for PEP navigation / modal selection
         if (patientJoin && patientJoin.id && patientJoin.full_name) {
-          const cachedPatients = getStored<Patient[]>(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+          const patCpfClean = String(patientJoin.document_cpf || '').replace(/\D/g, '');
           const alreadyExists = cachedPatients.some(
             (p) =>
               p.id === String(patientJoin.id) ||
-              (patientJoin.document_cpf &&
-                p.documentCpf.replace(/\D/g, '') === String(patientJoin.document_cpf).replace(/\D/g, ''))
+              (patCpfClean.length >= 11 &&
+                p.documentCpf.replace(/\D/g, '') === patCpfClean)
           );
           if (!alreadyExists) {
             cachedPatients.unshift({
@@ -1303,35 +1370,54 @@ export const StorageService = {
               healthPlanType:
                 patientJoin.health_plan_type === 'convenio' ? 'convenio' : 'particular',
               sharingMode: 'model_b_shared',
-              authorizedBranchIds: [defaultBranchId],
+              authorizedBranchIds: [String(row.branch_id || defaultBranchId)],
               lgpdConsent: true,
               createdAt: String(row.created_at || new Date().toISOString()),
               isActive: true,
             });
-            setStored(STORAGE_KEYS.PATIENTS, cachedPatients);
+            patientsCacheDirty = true;
           }
         }
 
         const rawNotes = row.notes ? String(row.notes) : '';
         const notesServiceMatch = rawNotes.match(/Tipo:\s*([^·\n]+)/i);
+        const startTimeIso = String(row.start_time || row.created_at || new Date().toISOString());
+        const endTimeIso = row.end_time
+          ? String(row.end_time)
+          : new Date(new Date(startTimeIso).getTime() + 50 * 60000).toISOString();
 
         return {
           id: String(row.id),
           organizationId: String(row.organization_id || 'org_mureb_01'),
           branchId: String(row.branch_id || defaultBranchId),
-          patientId: String(row.patient_id || patientJoin?.id || ''),
-          patientName: String(patientJoin?.full_name || 'Paciente Online'),
-          patientPhone: String(patientJoin?.whatsapp || patientJoin?.phone || ''),
-          professionalId: String(row.professional_id || 'prof_newton'),
-          professionalName: String(profJoin?.full_name || 'Dr. Newton Mureb'),
+          branchName: String(
+            branchJoin?.name || row.branch_name || row.unidade || defaultBranchName
+          ),
+          patientId: resolvedPatientId,
+          patientName: resolvedPatientName,
+          patientPhone: resolvedPatientPhone,
+          professionalId: String(row.professional_id || profJoin?.id || 'prof_newton'),
+          professionalName: String(
+            profJoin?.full_name ||
+              row.professional_name ||
+              row.especialista ||
+              'Dr. Newton Mureb'
+          ),
           serviceId: row.service_id ? String(row.service_id) : undefined,
           serviceName: String(
-            serviceJoin?.name || (notesServiceMatch ? notesServiceMatch[1].trim() : 'Consulta Médica')
+            serviceJoin?.name ||
+              row.service_name ||
+              row.tipo_atendimento ||
+              (notesServiceMatch ? notesServiceMatch[1].trim() : 'Consulta Médica')
           ),
           roomId: row.room_id ? String(row.room_id) : undefined,
-          roomName: String(roomJoin?.name || 'Consultório 01 - Dr. Newton Mureb'),
-          startTime: String(row.start_time),
-          endTime: String(row.end_time),
+          roomName: String(
+            roomJoin?.name ||
+              row.room_name ||
+              'Consultório 01 - Clínica Médica, Endocrinologia e Metabologia'
+          ),
+          startTime: startTimeIso,
+          endTime: endTimeIso,
           status: (row.status as AppointmentStatus) || 'scheduled',
           appointmentType:
             row.appointment_type === 'telemedicina' ? 'telemedicina' : 'presencial',
@@ -1343,30 +1429,36 @@ export const StorageService = {
         };
       });
 
-      if (!dateFilter) {
-        // Merge cloud appointments with any purely local/demo appointments without duplicating
-        const cloudIds = new Set(cloudAppointments.map((c) => c.id));
-        const cloudKeys = new Set(
-          cloudAppointments.map(
-            (c) => `${c.patientName.trim().toLowerCase()}|${new Date(c.startTime).getTime()}`
-          )
-        );
-        const remainingLocal = localList.filter((l) => {
-          const key = `${l.patientName.trim().toLowerCase()}|${new Date(l.startTime).getTime()}`;
-          return !cloudIds.has(l.id) && !cloudKeys.has(key);
-        });
-        const merged = [...cloudAppointments, ...remainingLocal].sort(
-          (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-        );
-        setStored(STORAGE_KEYS.APPOINTMENTS, merged);
-        return merged;
+      if (patientsCacheDirty) {
+        setStored(STORAGE_KEYS.PATIENTS, cachedPatients);
       }
 
-      return cloudAppointments;
+      // CRITICAL: When Supabase responds without error, replace local appointments cache with real Supabase rows
+      // (never merge INITIAL_APPOINTMENTS mock records back in)
+      if (!dateFilter) {
+        setStored(STORAGE_KEYS.APPOINTMENTS, cloudAppointments);
+      }
+
+      return {
+        appointments: cloudAppointments,
+        source: 'supabase',
+        count: cloudAppointments.length,
+      };
     } catch (err) {
-      console.warn('Exceção ao carregar agendamentos do Supabase:', err);
-      return localList;
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn('Exceção ao carregar agendamentos do Supabase:', errMsg);
+      return {
+        appointments: localList,
+        source: 'local_fallback',
+        error: errMsg,
+        count: 0,
+      };
     }
+  },
+
+  fetchAppointmentsFromCloud: async (dateFilter?: string): Promise<Appointment[]> => {
+    const res = await StorageService.fetchAppointmentsFromCloudDetailed(dateFilter);
+    return res.appointments;
   },
 
   updateAppointmentStatusInCloud: async (

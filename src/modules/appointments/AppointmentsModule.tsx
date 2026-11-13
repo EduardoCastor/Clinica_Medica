@@ -67,10 +67,20 @@ function buildWhatsappUrl(phone: string, apt: Appointment, branchAddress?: strin
   return `https://wa.me/${fullDigits}?text=${encodeURIComponent(text)}`;
 }
 
+function isUuid(value?: string): boolean {
+  return Boolean(
+    value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  );
+}
+
 export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNavigateToRecord }) => {
   const { activeBranchId, branches, clinic } = useTenant();
+  const shouldFilterByBranch = Boolean(
+    activeBranchId && activeBranchId !== 'all' && isUuid(activeBranchId)
+  );
+
   const [appointments, setAppointments] = useState<Appointment[]>(() =>
-    StorageService.getAppointments(activeBranchId)
+    StorageService.getAppointments(shouldFilterByBranch ? activeBranchId : undefined)
   );
   const professionals = StorageService.getProfessionals();
 
@@ -84,6 +94,8 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
 
   // Sync & Feedback States
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncSource, setSyncSource] = useState<'supabase' | 'local_fallback' | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [copiedAgendaLink, setCopiedAgendaLink] = useState<boolean>(false);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState<boolean>(false);
@@ -111,18 +123,21 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
   const loadAppointments = useCallback(
     async (silent = false) => {
       if (!silent) setIsSyncing(true);
-      const cloudList = await StorageService.fetchAppointmentsFromCloud();
-      const filteredByBranch =
-        !activeBranchId || activeBranchId === 'all'
-          ? cloudList
-          : cloudList.filter((a) => a.branchId === activeBranchId);
+      const res = await StorageService.fetchAppointmentsFromCloudDetailed();
+      setSyncSource(res.source);
+      setSyncError(res.error || null);
+
+      const filteredByBranch = shouldFilterByBranch
+        ? res.appointments.filter((a) => a.branchId === activeBranchId)
+        : res.appointments;
+
       setAppointments(filteredByBranch);
       setLastSyncedAt(
         new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       );
       if (!silent) setIsSyncing(false);
     },
-    [activeBranchId]
+    [activeBranchId, shouldFilterByBranch]
   );
 
   useEffect(() => {
@@ -150,7 +165,9 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
     }
 
     const handleStorageUpdate = () => {
-      setAppointments(StorageService.getAppointments(activeBranchId));
+      setAppointments(
+        StorageService.getAppointments(shouldFilterByBranch ? activeBranchId : undefined)
+      );
     };
     window.addEventListener('medsync_storage_update', handleStorageUpdate);
 
@@ -167,7 +184,7 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
         void supabase.removeChannel(channel);
       }
     };
-  }, [activeBranchId, loadAppointments]);
+  }, [activeBranchId, shouldFilterByBranch, loadAppointments]);
 
   const handleUpdateStatus = async (
     id: string,
@@ -175,8 +192,13 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
     reasonOrNotes?: string
   ) => {
     setUpdatingId(id);
-    await StorageService.updateAppointmentStatusInCloud(id, status, reasonOrNotes);
-    setAppointments(StorageService.getAppointments(activeBranchId));
+    const res = await StorageService.updateAppointmentStatusInCloud(id, status, reasonOrNotes);
+    if (!res.success && res.error) {
+      setSyncError(`Erro ao atualizar status no Supabase: ${res.error}`);
+    }
+    setAppointments(
+      StorageService.getAppointments(shouldFilterByBranch ? activeBranchId : undefined)
+    );
     setUpdatingId(null);
   };
 
@@ -245,8 +267,16 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
         if (aptLocalDate.slice(0, 7) !== referenceDate.slice(0, 7)) return false;
       }
 
-      if (selectedProfessional !== 'all' && apt.professionalId !== selectedProfessional) {
-        return false;
+      if (selectedProfessional !== 'all') {
+        const selectedProfObj = professionals.find((p) => p.id === selectedProfessional);
+        const matchesId = apt.professionalId === selectedProfessional;
+        const matchesName = Boolean(
+          selectedProfObj &&
+            apt.professionalName.toLowerCase().includes(selectedProfObj.fullName.toLowerCase())
+        );
+        if (!matchesId && !matchesName) {
+          return false;
+        }
       }
       if (selectedStatus !== 'all' && apt.status !== selectedStatus) {
         return false;
@@ -320,8 +350,20 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
               Agenda Visual de Consultas
             </h1>
-            <span className="text-[11px] font-semibold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
-              {isRealtimeConnected ? 'Realtime Supabase Ativo' : 'Sincronização Ativa'}
+            <span
+              className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                syncSource === 'local_fallback'
+                  ? 'text-amber-800 bg-amber-50 border-amber-200'
+                  : isRealtimeConnected
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-sky-700 bg-sky-50 border-sky-200'
+              }`}
+            >
+              {syncSource === 'local_fallback'
+                ? 'Modo Local (Sem conexão Supabase)'
+                : isRealtimeConnected
+                  ? 'Realtime Supabase Ativo'
+                  : 'Supabase Conectado'}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -391,6 +433,26 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
           </button>
         </div>
       </div>
+
+      {/* Diagnostic Banner when Supabase query fails or credentials are missing */}
+      {syncError && (
+        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-900">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Aviso na sincronização com o Supabase:</p>
+              <p className="text-amber-800 mt-0.5">{syncError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadAppointments(false)}
+            className="px-3 py-1.5 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg font-semibold text-amber-900 shrink-0 transition"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      )}
 
       {/* Filter & Period Controls */}
       <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -663,7 +725,7 @@ export const AppointmentsModule: React.FC<AppointmentsModuleProps> = ({ onNaviga
                           {apt.serviceName || 'Consulta Médica'}
                         </span>
                         <span className="text-[10px] text-slate-400 block truncate">
-                          {branchObj?.name || 'Unidade Matriz Cabo Frio (Centro)'}
+                          {apt.branchName || branchObj?.name || 'Unidade Matriz Cabo Frio (Centro)'}
                         </span>
                       </td>
 
