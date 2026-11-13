@@ -153,7 +153,7 @@ const MainAppContent: React.FC = () => {
                     <ClinicDashboard onNavigateTab={(tab) => setActiveClinicTab(tab)} />
                   )}
                   {activeClinicTab === 'appointments' && (
-                    <AppointmentsModule />
+                    <AppointmentsModule onNavigateToRecord={handleNavigateToRecord} />
                   )}
                   {activeClinicTab === 'patients' && (
                     <PatientsModule

@@ -761,7 +761,11 @@ export const StorageService = {
     const apt = list.find(a => a.id === id);
     if (apt) {
       apt.status = status;
-      if (cancellationReason) apt.cancellationReason = cancellationReason;
+      if (status === 'cancelled' && cancellationReason) {
+        apt.cancellationReason = cancellationReason;
+      } else if (status === 'scheduled' || status === 'confirmed') {
+        apt.cancellationReason = undefined;
+      }
       setStored(STORAGE_KEYS.APPOINTMENTS, list);
 
       StorageService.addAuditLog({
@@ -1185,6 +1189,663 @@ export const StorageService = {
     }
 
     return undefined;
+  },
+
+  // =========================================================================
+  // Supabase Cloud Sync: Appointments & Waitlist (with localStorage fallback)
+  // =========================================================================
+
+  fetchAppointmentsFromCloud: async (dateFilter?: string): Promise<Appointment[]> => {
+    const localList = StorageService.getAppointments();
+    const supabase = getSupabase();
+    if (!supabase) return localList;
+
+    try {
+      let query = supabase
+        .from('appointments')
+        .select(
+          `
+          id,
+          organization_id,
+          branch_id,
+          patient_id,
+          professional_id,
+          service_id,
+          room_id,
+          start_time,
+          end_time,
+          status,
+          appointment_type,
+          notes,
+          cancellation_reason,
+          created_at,
+          patients (
+            id,
+            full_name,
+            phone,
+            whatsapp,
+            document_cpf,
+            email,
+            health_plan_type
+          ),
+          services (
+            id,
+            name
+          ),
+          rooms (
+            id,
+            name
+          ),
+          professionals (
+            id,
+            full_name
+          ),
+          branches (
+            id,
+            name
+          )
+        `
+        )
+        .order('start_time', { ascending: true });
+
+      if (dateFilter) {
+        query = query
+          .gte('start_time', `${dateFilter}T00:00:00`)
+          .lte('start_time', `${dateFilter}T23:59:59.999`);
+      }
+
+      const { data, error } = await query;
+      if (error || !data) {
+        if (error) {
+          console.warn('Erro ao buscar agendamentos no Supabase:', error.message);
+        }
+        return localList;
+      }
+
+      const branches = StorageService.getBranches();
+      const defaultBranchId = branches[0]?.id || 'branch_cf_centro';
+
+      const cloudAppointments: Appointment[] = (data as Array<Record<string, unknown>>).map((row) => {
+        const patientJoin = Array.isArray(row.patients)
+          ? (row.patients[0] as Record<string, unknown> | undefined)
+          : (row.patients as Record<string, unknown> | null);
+        const serviceJoin = Array.isArray(row.services)
+          ? (row.services[0] as Record<string, unknown> | undefined)
+          : (row.services as Record<string, unknown> | null);
+        const roomJoin = Array.isArray(row.rooms)
+          ? (row.rooms[0] as Record<string, unknown> | undefined)
+          : (row.rooms as Record<string, unknown> | null);
+        const profJoin = Array.isArray(row.professionals)
+          ? (row.professionals[0] as Record<string, unknown> | undefined)
+          : (row.professionals as Record<string, unknown> | null);
+
+        // Ensure linked patient exists in localStorage cache for quick PEP navigation
+        if (patientJoin && patientJoin.id && patientJoin.full_name) {
+          const cachedPatients = getStored<Patient[]>(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+          const alreadyExists = cachedPatients.some(
+            (p) =>
+              p.id === String(patientJoin.id) ||
+              (patientJoin.document_cpf &&
+                p.documentCpf.replace(/\D/g, '') === String(patientJoin.document_cpf).replace(/\D/g, ''))
+          );
+          if (!alreadyExists) {
+            cachedPatients.unshift({
+              id: String(patientJoin.id),
+              organizationId: String(row.organization_id || 'org_mureb_01'),
+              originBranchId: String(row.branch_id || defaultBranchId),
+              fullName: String(patientJoin.full_name),
+              documentCpf: String(patientJoin.document_cpf || ''),
+              birthDate: '',
+              gender: 'N',
+              phone: String(patientJoin.phone || patientJoin.whatsapp || ''),
+              whatsapp: String(patientJoin.whatsapp || patientJoin.phone || ''),
+              email: String(patientJoin.email || ''),
+              healthPlanType:
+                patientJoin.health_plan_type === 'convenio' ? 'convenio' : 'particular',
+              sharingMode: 'model_b_shared',
+              authorizedBranchIds: [defaultBranchId],
+              lgpdConsent: true,
+              createdAt: String(row.created_at || new Date().toISOString()),
+              isActive: true,
+            });
+            setStored(STORAGE_KEYS.PATIENTS, cachedPatients);
+          }
+        }
+
+        const rawNotes = row.notes ? String(row.notes) : '';
+        const notesServiceMatch = rawNotes.match(/Tipo:\s*([^·\n]+)/i);
+
+        return {
+          id: String(row.id),
+          organizationId: String(row.organization_id || 'org_mureb_01'),
+          branchId: String(row.branch_id || defaultBranchId),
+          patientId: String(row.patient_id || patientJoin?.id || ''),
+          patientName: String(patientJoin?.full_name || 'Paciente Online'),
+          patientPhone: String(patientJoin?.whatsapp || patientJoin?.phone || ''),
+          professionalId: String(row.professional_id || 'prof_newton'),
+          professionalName: String(profJoin?.full_name || 'Dr. Newton Mureb'),
+          serviceId: row.service_id ? String(row.service_id) : undefined,
+          serviceName: String(
+            serviceJoin?.name || (notesServiceMatch ? notesServiceMatch[1].trim() : 'Consulta Médica')
+          ),
+          roomId: row.room_id ? String(row.room_id) : undefined,
+          roomName: String(roomJoin?.name || 'Consultório 01 - Dr. Newton Mureb'),
+          startTime: String(row.start_time),
+          endTime: String(row.end_time),
+          status: (row.status as AppointmentStatus) || 'scheduled',
+          appointmentType:
+            row.appointment_type === 'telemedicina' ? 'telemedicina' : 'presencial',
+          notes: rawNotes || undefined,
+          cancellationReason: row.cancellation_reason
+            ? String(row.cancellation_reason)
+            : undefined,
+          createdAt: String(row.created_at || new Date().toISOString()),
+        };
+      });
+
+      if (!dateFilter) {
+        // Merge cloud appointments with any purely local/demo appointments without duplicating
+        const cloudIds = new Set(cloudAppointments.map((c) => c.id));
+        const cloudKeys = new Set(
+          cloudAppointments.map(
+            (c) => `${c.patientName.trim().toLowerCase()}|${new Date(c.startTime).getTime()}`
+          )
+        );
+        const remainingLocal = localList.filter((l) => {
+          const key = `${l.patientName.trim().toLowerCase()}|${new Date(l.startTime).getTime()}`;
+          return !cloudIds.has(l.id) && !cloudKeys.has(key);
+        });
+        const merged = [...cloudAppointments, ...remainingLocal].sort(
+          (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+        );
+        setStored(STORAGE_KEYS.APPOINTMENTS, merged);
+        return merged;
+      }
+
+      return cloudAppointments;
+    } catch (err) {
+      console.warn('Exceção ao carregar agendamentos do Supabase:', err);
+      return localList;
+    }
+  },
+
+  updateAppointmentStatusInCloud: async (
+    appointmentId: string,
+    newStatus: AppointmentStatus,
+    notes?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    // 1. Update localStorage immediately for responsive UI
+    StorageService.updateAppointmentStatus(
+      appointmentId,
+      newStatus,
+      newStatus === 'cancelled' ? notes : undefined
+    );
+
+    const supabase = getSupabase();
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentId);
+
+    if (!supabase || !isUuid) {
+      return { success: true };
+    }
+
+    try {
+      const updatePayload: Record<string, unknown> = {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      };
+      if (newStatus === 'cancelled' && notes) {
+        updatePayload.cancellation_reason = notes;
+      } else if (newStatus === 'scheduled' || newStatus === 'confirmed') {
+        updatePayload.cancellation_reason = null;
+        if (notes) updatePayload.notes = notes;
+      } else if (notes) {
+        updatePayload.notes = notes;
+      }
+
+      const { error } = await supabase
+        .from('appointments')
+        .update(updatePayload)
+        .eq('id', appointmentId);
+
+      if (error) {
+        console.warn('Erro ao atualizar status no Supabase:', error.message);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: msg };
+    }
+  },
+
+  createAppointmentInCloud: async (input: {
+    existingAppointmentId?: string;
+    existingPatientId?: string;
+    newPatient?: {
+      fullName: string;
+      documentCpf: string;
+      phone: string;
+      whatsapp?: string;
+      email?: string;
+    };
+    branchId: string;
+    professionalId: string;
+    serviceId?: string;
+    serviceName?: string;
+    roomId?: string;
+    roomName?: string;
+    startTime: string;
+    endTime: string;
+    status: AppointmentStatus;
+    appointmentType: 'presencial' | 'telemedicina';
+    notes?: string;
+    isOverbook?: boolean;
+    dateYmd?: string;
+    horaFormatada?: string;
+    n8nInicio?: string;
+    sendToN8n?: boolean;
+  }): Promise<{ success: boolean; appointment?: Appointment; message?: string }> => {
+    const clinic = StorageService.getClinic();
+    const org = StorageService.getOrganization();
+    const branches = StorageService.getBranches();
+    const professionals = StorageService.getProfessionals();
+    const services = StorageService.getServices();
+    const rooms = StorageService.getRooms();
+
+    const targetBranch = branches.find((b) => b.id === input.branchId) || branches[0];
+    const targetProf = professionals.find((p) => p.id === input.professionalId) || professionals[0];
+    const targetService = services.find((s) => s.id === input.serviceId) || services[0];
+    const targetRoom = rooms.find((r) => r.id === input.roomId) || rooms[0];
+
+    let resolvedPatient: Patient | undefined;
+
+    if (input.newPatient) {
+      const nowIso = new Date().toISOString();
+      resolvedPatient = StorageService.upsertPatientByCpf({
+        id: `pat_${Date.now()}`,
+        organizationId: org.id || 'org_mureb_01',
+        originBranchId: targetBranch?.id || 'branch_cf_centro',
+        authorizedBranchIds: [targetBranch?.id || 'branch_cf_centro'],
+        sharingMode: 'model_b_shared',
+        fullName: input.newPatient.fullName.trim(),
+        documentCpf: input.newPatient.documentCpf,
+        birthDate: '',
+        gender: 'N',
+        phone: input.newPatient.phone,
+        whatsapp: input.newPatient.whatsapp || input.newPatient.phone,
+        email: input.newPatient.email || '',
+        lgpdConsent: true,
+        lgpdConsentDate: nowIso,
+        administrativeNotes: 'Paciente cadastrado diretamente via Agenda Visual.',
+        isActive: true,
+        createdAt: nowIso,
+      });
+    } else if (input.existingPatientId) {
+      resolvedPatient = StorageService.getPatients().find((p) => p.id === input.existingPatientId);
+    }
+
+    if (!resolvedPatient) {
+      return { success: false, message: 'Selecione ou cadastre um paciente para agendar.' };
+    }
+
+    const nowIso = new Date().toISOString();
+    let finalAppointmentId = input.existingAppointmentId || `apt_${Date.now()}`;
+    const isUuid = (val?: string) =>
+      Boolean(
+        val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+      );
+
+    // 1. Optional n8n webhook notification (if requested for new appointments)
+    if (input.sendToN8n && !input.existingAppointmentId) {
+      const webhookUrl = (
+        clinic.n8nWebhookAgendamento ||
+        'https://n8n.srv1352561.hstgr.cloud/webhook/agendaclinica'
+      ).trim();
+
+      const cleanCpf = resolvedPatient.documentCpf.replace(/\D/g, '');
+      const cleanPhone = (resolvedPatient.whatsapp || resolvedPatient.phone).replace(/\D/g, '');
+      const celularE164 =
+        cleanPhone.startsWith('55') && cleanPhone.length >= 12
+          ? `+${cleanPhone}`
+          : `+55${cleanPhone}`;
+
+      const dateYmd =
+        input.dateYmd ||
+        `${new Date(input.startTime).getFullYear()}-${String(new Date(input.startTime).getMonth() + 1).padStart(2, '0')}-${String(new Date(input.startTime).getDate()).padStart(2, '0')}`;
+      const horaFmt =
+        input.horaFormatada ||
+        new Date(input.startTime).toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            unidade: targetBranch
+              ? `${targetBranch.name} (${targetBranch.city}/${targetBranch.state})`
+              : 'Unidade Matriz Cabo Frio (Centro) (Cabo Frio/RJ)',
+            especialista: targetProf?.fullName || 'Dr. Newton Mureb',
+            tipo_atendimento: input.serviceName || targetService?.name || 'Primeira consulta',
+            nome: resolvedPatient.fullName,
+            cpf: cleanCpf,
+            celular: celularE164,
+            email: resolvedPatient.email || '',
+            assunto: input.notes || '',
+            data: dateYmd,
+            horario: input.n8nInicio || input.startTime,
+            hora_formatada: horaFmt,
+            inicio: input.n8nInicio || input.startTime,
+            tenant_slug: org.slug || 'dr-newton-mureb',
+            organization_id: org.id || 'org_mureb_01',
+            clinic_cnpj: clinic.documentNumber || '55.937.470/0001-78',
+          }),
+        });
+      } catch (n8nErr) {
+        console.warn('Aviso ao enviar confirmação para webhook n8n:', n8nErr);
+      }
+    }
+
+    // 2. Persist in Supabase (if configured)
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: orgRow } = await supabase
+          .from('organizations')
+          .select('id')
+          .limit(1)
+          .maybeSingle();
+
+        const supaOrgId = orgRow?.id;
+        if (supaOrgId) {
+          const { data: branchRow } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('organization_id', supaOrgId)
+            .limit(1)
+            .maybeSingle();
+
+          const { data: profRow } = await supabase
+            .from('professionals')
+            .select('id')
+            .eq('organization_id', supaOrgId)
+            .limit(1)
+            .maybeSingle();
+
+          const { data: srvRow } = await supabase
+            .from('services')
+            .select('id')
+            .eq('organization_id', supaOrgId)
+            .limit(1)
+            .maybeSingle();
+
+          const cleanCpf = resolvedPatient.documentCpf.replace(/\D/g, '');
+          let supaPatientId = isUuid(resolvedPatient.id) ? resolvedPatient.id : undefined;
+
+          if (!supaPatientId && cleanCpf) {
+            const { data: foundPat } = await supabase
+              .from('patients')
+              .select('id')
+              .eq('organization_id', supaOrgId)
+              .or(`document_cpf.eq.${resolvedPatient.documentCpf},document_cpf.eq.${cleanCpf}`)
+              .limit(1)
+              .maybeSingle();
+            supaPatientId = foundPat?.id;
+          }
+
+          if (!supaPatientId && branchRow?.id) {
+            const { data: insertedPat } = await supabase
+              .from('patients')
+              .insert({
+                organization_id: supaOrgId,
+                origin_branch_id: branchRow.id,
+                full_name: resolvedPatient.fullName,
+                document_cpf: resolvedPatient.documentCpf,
+                phone: resolvedPatient.phone,
+                whatsapp: resolvedPatient.whatsapp || resolvedPatient.phone,
+                email: resolvedPatient.email || null,
+                lgpd_consent: true,
+                lgpd_consent_date: nowIso,
+                sharing_mode: 'model_b_shared',
+              })
+              .select('id')
+              .single();
+            supaPatientId = insertedPat?.id;
+          }
+
+          if (supaPatientId && branchRow?.id && profRow?.id) {
+            if (isUuid(input.existingAppointmentId)) {
+              await supabase
+                .from('appointments')
+                .update({
+                  patient_id: supaPatientId,
+                  service_id: isUuid(input.serviceId) ? input.serviceId : srvRow?.id || null,
+                  room_id: isUuid(input.roomId) ? input.roomId : null,
+                  start_time: input.startTime,
+                  end_time: input.endTime,
+                  status: input.status,
+                  appointment_type: input.appointmentType,
+                  notes: input.notes || null,
+                  updated_at: nowIso,
+                })
+                .eq('id', input.existingAppointmentId!);
+            } else {
+              const { data: insertedApt } = await supabase
+                .from('appointments')
+                .insert({
+                  organization_id: supaOrgId,
+                  branch_id: branchRow.id,
+                  patient_id: supaPatientId,
+                  professional_id: profRow.id,
+                  service_id: isUuid(input.serviceId) ? input.serviceId : srvRow?.id || null,
+                  room_id: isUuid(input.roomId) ? input.roomId : null,
+                  start_time: input.startTime,
+                  end_time: input.endTime,
+                  status: input.status,
+                  appointment_type: input.appointmentType,
+                  notes: input.notes || null,
+                })
+                .select('id')
+                .single();
+              if (insertedApt?.id) {
+                finalAppointmentId = insertedApt.id;
+              }
+            }
+          }
+        }
+      } catch (supaErr) {
+        console.warn('Aviso ao persistir agendamento no Supabase:', supaErr);
+      }
+    }
+
+    // 3. Persist in localStorage ERP
+    const appointmentObj: Appointment = {
+      id: finalAppointmentId,
+      organizationId: org.id || 'org_mureb_01',
+      branchId: targetBranch?.id || 'branch_cf_centro',
+      patientId: resolvedPatient.id,
+      patientName: resolvedPatient.fullName,
+      patientPhone: resolvedPatient.whatsapp || resolvedPatient.phone,
+      professionalId: targetProf?.id || 'prof_newton',
+      professionalName: targetProf?.fullName || 'Dr. Newton Mureb',
+      serviceId: targetService?.id,
+      serviceName: input.serviceName || targetService?.name || 'Consulta Médica',
+      roomId: targetRoom?.id,
+      roomName: targetRoom?.name || 'Consultório 01 - Clínica Médica, Endocrinologia e Metabologia',
+      startTime: input.startTime,
+      endTime: input.endTime,
+      status: input.status,
+      appointmentType: input.appointmentType,
+      notes: input.notes,
+      isOverbook: input.isOverbook,
+      createdAt: nowIso,
+    };
+
+    const localRes = StorageService.saveAppointment(appointmentObj);
+    if (!localRes.success) {
+      return { success: false, message: localRes.message };
+    }
+
+    return { success: true, appointment: appointmentObj };
+  },
+
+  fetchWaitlistFromCloud: async (branchFilterId?: string): Promise<WaitlistEntry[]> => {
+    const localList = StorageService.getWaitlist(branchFilterId);
+    const supabase = getSupabase();
+    if (!supabase) return localList;
+
+    try {
+      const { data, error } = await supabase
+        .from('waitlist')
+        .select(
+          `
+          id,
+          organization_id,
+          branch_id,
+          patient_id,
+          professional_id,
+          specialty_id,
+          preferred_days,
+          preferred_period,
+          notes,
+          status,
+          created_at,
+          patients (
+            full_name,
+            phone,
+            whatsapp
+          )
+        `
+        )
+        .eq('status', 'waiting')
+        .order('created_at', { ascending: false });
+
+      if (error || !data) {
+        return localList;
+      }
+
+      const cloudWaitlist: WaitlistEntry[] = (data as Array<Record<string, unknown>>).map((row) => {
+        const pat = Array.isArray(row.patients)
+          ? (row.patients[0] as Record<string, unknown> | undefined)
+          : (row.patients as Record<string, unknown> | null);
+        return {
+          id: String(row.id),
+          organizationId: String(row.organization_id),
+          branchId: String(row.branch_id),
+          patientId: String(row.patient_id),
+          patientName: String(pat?.full_name || 'Paciente'),
+          patientPhone: String(pat?.whatsapp || pat?.phone || ''),
+          professionalId: row.professional_id ? String(row.professional_id) : undefined,
+          specialtyId: row.specialty_id ? String(row.specialty_id) : undefined,
+          preferredDays: Array.isArray(row.preferred_days)
+            ? (row.preferred_days as string[])
+            : [],
+          preferredPeriod:
+            (row.preferred_period as WaitlistEntry['preferredPeriod']) || 'qualquer',
+          notes: row.notes ? String(row.notes) : undefined,
+          status: (row.status as WaitlistEntry['status']) || 'waiting',
+          createdAt: String(row.created_at || new Date().toISOString()),
+        };
+      });
+
+      const cloudIds = new Set(cloudWaitlist.map((w) => w.id));
+      const merged = [
+        ...cloudWaitlist,
+        ...StorageService.getWaitlist().filter((l) => !cloudIds.has(l.id)),
+      ];
+      setStored(STORAGE_KEYS.WAITLIST, merged);
+      return !branchFilterId || branchFilterId === 'all'
+        ? merged
+        : merged.filter((w) => w.branchId === branchFilterId);
+    } catch {
+      return localList;
+    }
+  },
+
+  createWaitlistInCloud: async (entry: WaitlistEntry): Promise<WaitlistEntry> => {
+    let savedId = entry.id;
+    const supabase = getSupabase();
+
+    if (supabase) {
+      try {
+        const { data: orgRow } = await supabase
+          .from('organizations')
+          .select('id')
+          .limit(1)
+          .maybeSingle();
+        if (orgRow?.id) {
+          const { data: branchRow } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('organization_id', orgRow.id)
+            .limit(1)
+            .maybeSingle();
+          const { data: profRow } = await supabase
+            .from('professionals')
+            .select('id')
+            .eq('organization_id', orgRow.id)
+            .limit(1)
+            .maybeSingle();
+
+          const localPatient = StorageService.getPatients().find((p) => p.id === entry.patientId);
+          let supaPatientId: string | undefined;
+          if (localPatient) {
+            const cleanCpf = localPatient.documentCpf.replace(/\D/g, '');
+            const { data: patRow } = await supabase
+              .from('patients')
+              .select('id')
+              .eq('organization_id', orgRow.id)
+              .or(`document_cpf.eq.${localPatient.documentCpf},document_cpf.eq.${cleanCpf}`)
+              .limit(1)
+              .maybeSingle();
+            supaPatientId = patRow?.id;
+          }
+
+          if (branchRow?.id && supaPatientId) {
+            const { data: inserted } = await supabase
+              .from('waitlist')
+              .insert({
+                organization_id: orgRow.id,
+                branch_id: branchRow.id,
+                patient_id: supaPatientId,
+                professional_id: profRow?.id || null,
+                preferred_days: entry.preferredDays,
+                preferred_period: entry.preferredPeriod,
+                notes: entry.notes || null,
+                status: 'waiting',
+              })
+              .select('id')
+              .single();
+            if (inserted?.id) savedId = inserted.id;
+          }
+        }
+      } catch (err) {
+        console.warn('Aviso ao inserir na waitlist do Supabase:', err);
+      }
+    }
+
+    const finalEntry = { ...entry, id: savedId };
+    StorageService.saveWaitlistEntry(finalEntry);
+    return finalEntry;
+  },
+
+  removeWaitlistInCloud: async (id: string): Promise<void> => {
+    StorageService.removeWaitlistEntry(id);
+    const supabase = getSupabase();
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (supabase && isUuid) {
+      try {
+        await supabase.from('waitlist').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Aviso ao remover item da waitlist no Supabase:', err);
+      }
+    }
   }
 };
+
 
