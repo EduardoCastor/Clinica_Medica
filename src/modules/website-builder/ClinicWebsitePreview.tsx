@@ -16,9 +16,10 @@ import {
   User
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
-import { WebsiteConfig, ColorPalette, Appointment } from '../../types';
+import { WebsiteConfig, ColorPalette } from '../../types';
 import { PatientPortal } from '../patient-portal/PatientPortal';
 import { ClinicBrandLogo, CLINIC_OFFICIAL_DATA } from '../../components/ClinicBrandLogo';
+import { DomainResolver, PRODUCTION_DOMAINS } from '../../services/domainResolver';
 
 interface ClinicWebsitePreviewProps {
   onBackToPanel?: () => void;
@@ -32,22 +33,23 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
   const branches = StorageService.getBranches();
   const professionals = StorageService.getProfessionals();
   const services = StorageService.getServices();
-  const specialties = StorageService.getSpecialties();
 
-  // Online Booking Modal State
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingStep, setBookingStep] = useState<1 | 2 | 3>(1);
-  const [selectedBranchId, setSelectedBranchId] = useState(branches[0]?.id || '');
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState(professionals[0]?.id || '');
-  const [selectedServiceId, setSelectedServiceId] = useState(services[0]?.id || '');
-  const [selectedDate, setSelectedDate] = useState('2026-11-10');
-  const [selectedTime, setSelectedTime] = useState('14:00');
-  
-  // Patient Form
-  const [patientName, setPatientName] = useState('');
-  const [patientCpf, setPatientCpf] = useState('');
-  const [patientPhone, setPatientPhone] = useState('');
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const handleOpenBookingPortal = () => {
+    const clinicDomains = StorageService.getDomainsByClinic(clinic.id);
+    const bookingDomain =
+      clinicDomains.find((d) => d.domainType === 'clinic_booking' || d.domainType === 'booking')?.domain ||
+      PRODUCTION_DOMAINS.CLINIC_BOOKING;
+
+    if (DomainResolver.isRealProductionDomain()) {
+      window.location.href = `https://${bookingDomain}`;
+      return;
+    }
+
+    if (onBackToPanel) {
+      onBackToPanel();
+    }
+    DomainResolver.setSimulatedDomain(bookingDomain);
+  };
 
   // Theme styling definitions for the 5 palettes
   const getThemeStyles = (palette: ColorPalette) => {
@@ -117,61 +119,6 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
   };
 
   const theme = getThemeStyles(config.paletteName);
-
-  const handleBookingSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!patientName.trim() || !patientPhone.trim() || !patientCpf.trim()) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
-      return;
-    }
-
-    const professional = professionals.find(p => p.id === selectedProfessionalId);
-    const service = services.find(s => s.id === selectedServiceId);
-    const branch = branches.find(b => b.id === selectedBranchId);
-
-    const durationMins = service?.durationMinutes || 50;
-    const [hoursStr, minsStr] = selectedTime.split(':');
-    const totalEndMins = Number(hoursStr) * 60 + Number(minsStr) + durationMins;
-    const endHour = String(Math.floor(totalEndMins / 60) % 24).padStart(2, '0');
-    const endMin = String(totalEndMins % 60).padStart(2, '0');
-
-    const newApt: Appointment = {
-      id: `apt_online_${Date.now()}`,
-      organizationId: 'org_mureb_01',
-      branchId: selectedBranchId,
-      patientId: `pat_online_${Date.now()}`,
-      patientName,
-      patientPhone,
-      professionalId: selectedProfessionalId,
-      professionalName: professional?.fullName || CLINIC_OFFICIAL_DATA.physicianName,
-      serviceId: selectedServiceId,
-      serviceName: service?.name || 'Consulta Médica',
-      startTime: `${selectedDate}T${selectedTime}:00.000Z`,
-      endTime: `${selectedDate}T${endHour}:${endMin}:00.000Z`,
-      status: 'scheduled',
-      appointmentType: 'presencial',
-      notes: `Solicitação realizada via Site Institucional (${config.paletteName}). Telefone: ${patientPhone}`,
-      createdAt: new Date().toISOString(),
-    };
-
-    StorageService.saveAppointment(newApt);
-
-    // Also trigger automated WhatsApp welcome/confirmation message
-    StorageService.sendMessage({
-      organizationId: 'org_mureb_01',
-      branchId: selectedBranchId,
-      patientName,
-      recipientPhone: patientPhone,
-      channel: 'whatsapp',
-      direction: 'outbound',
-      content: `Olá, ${patientName}! Sua solicitação de consulta com ${professional?.fullName} para ${selectedDate} às ${selectedTime} na ${branch?.name} foi recebida com sucesso! Em breve nossa recepção entrará em contato.`,
-      status: 'delivered',
-    });
-
-    setBookingSuccess(true);
-  };
-
-  const availableHours = ['08:30', '10:00', '11:30', '14:00', '15:30', '17:00'];
 
   return (
     <div className="min-h-screen bg-white text-slate-800 font-sans">
@@ -281,11 +228,7 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
             </button>
 
             <button
-              onClick={() => {
-                setBookingSuccess(false);
-                setBookingStep(1);
-                setIsBookingOpen(true);
-              }}
+              onClick={handleOpenBookingPortal}
               className={`px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition whitespace-nowrap flex items-center gap-1.5 ${theme.primary}`}
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -315,11 +258,7 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
 
           <div className="pt-4 flex flex-col sm:flex-row items-center gap-3">
             <button
-              onClick={() => {
-                setBookingSuccess(false);
-                setBookingStep(1);
-                setIsBookingOpen(true);
-              }}
+              onClick={handleOpenBookingPortal}
               className={`w-full sm:w-auto px-6 py-3.5 text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 ${theme.primary}`}
             >
               <Calendar className="w-4 h-4" />
@@ -433,12 +372,7 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
                     Consulta Presencial · Cabo Frio
                   </span>
                   <button
-                    onClick={() => {
-                      setSelectedServiceId(srv.id);
-                      setBookingSuccess(false);
-                      setBookingStep(1);
-                      setIsBookingOpen(true);
-                    }}
+                    onClick={handleOpenBookingPortal}
                     className={`font-bold flex items-center gap-1 ${theme.primaryText} hover:underline`}
                   >
                     <span>Agendar</span>
@@ -489,11 +423,7 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
                     </span>
                   </span>
                   <button
-                    onClick={() => {
-                      setSelectedProfessionalId(p.id);
-                      setBookingSuccess(false);
-                      setIsBookingOpen(true);
-                    }}
+                    onClick={handleOpenBookingPortal}
                     className={`px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${theme.primary}`}
                   >
                     <span>Agendar Consulta</span>
@@ -549,11 +479,7 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
 
               <div className="pt-2">
                 <button
-                  onClick={() => {
-                    setSelectedBranchId(b.id);
-                    setBookingSuccess(false);
-                    setIsBookingOpen(true);
-                  }}
+                  onClick={handleOpenBookingPortal}
                   className={`w-full py-2.5 text-xs font-bold rounded-xl text-center transition ${theme.primary}`}
                 >
                   Solicitar Agendamento em Cabo Frio
@@ -585,175 +511,6 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
           </div>
         </div>
       </footer>
-
-      {/* Interactive Online Booking Modal (Section 10.1) */}
-      {isBookingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-8">
-            
-            {/* Header */}
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-white">Solicitar Agendamento Online</h3>
-                <p className="text-xs text-slate-400">Escolha a filial, profissional e horário desejado</p>
-              </div>
-              <button 
-                onClick={() => setIsBookingOpen(false)}
-                className="p-1 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {bookingSuccess ? (
-              <div className="p-8 text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h4 className="text-lg font-bold text-slate-900">Agendamento Solicitado com Sucesso!</h4>
-                <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                  Sua consulta foi registrada no sistema da clínica. Um comprovante e instruções de atendimento foram enviados para seu WhatsApp <strong>{patientPhone}</strong>.
-                </p>
-                <button
-                  onClick={() => setIsBookingOpen(false)}
-                  className="px-6 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition"
-                >
-                  Concluir
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleBookingSubmit} className="p-6 space-y-4 text-xs">
-                
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">1. Escolha a Unidade / Filial</label>
-                  <select
-                    value={selectedBranchId}
-                    onChange={(e) => setSelectedBranchId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  >
-                    {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name} ({b.city}/{b.state})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">2. Especialista</label>
-                    <select
-                      value={selectedProfessionalId}
-                      onChange={(e) => setSelectedProfessionalId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    >
-                      {professionals.map(pr => (
-                        <option key={pr.id} value={pr.id}>{pr.fullName}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">3. Procedimento</label>
-                    <select
-                      value={selectedServiceId}
-                      onChange={(e) => setSelectedServiceId(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    >
-                      {services.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(2)}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Data Desejada</label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Horário Disponível</label>
-                    <select
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono font-medium"
-                    >
-                      {availableHours.map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100 space-y-3">
-                  <span className="font-bold text-slate-800 block">Seus Dados de Contato</span>
-                  
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Nome Completo</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: Ana Paula Ferreira"
-                      value={patientName}
-                      onChange={(e) => setPatientName(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">CPF</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="000.000.000-00"
-                        value={patientCpf}
-                        onChange={(e) => setPatientCpf(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">WhatsApp</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="(22) 99908-9122"
-                        value={patientPhone}
-                        onChange={(e) => setPatientPhone(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setIsBookingOpen(false)}
-                    className="px-4 py-2 text-slate-600 hover:text-slate-800"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className={`px-5 py-2 font-bold rounded-lg shadow-sm transition ${theme.primary}`}
-                  >
-                    Confirmar Agendamento
-                  </button>
-                </div>
-
-              </form>
-            )}
-
-          </div>
-        </div>
-      )}
 
       {/* Patient Portal Modal */}
       {isPatientPortalOpen && (

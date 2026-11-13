@@ -17,6 +17,7 @@ import { ClinicSettings } from './modules/clinic/ClinicSettings';
 import { TeamManagement } from './modules/clinic/TeamManagement';
 import { WebsiteEditor } from './modules/website-builder/WebsiteEditor';
 import { ClinicWebsitePreview } from './modules/website-builder/ClinicWebsitePreview';
+import { PatientPortal } from './modules/patient-portal/PatientPortal';
 import { LandingPage } from './modules/landing/LandingPage';
 import { SaasAdminDashboard } from './modules/saas-admin/SaasAdminDashboard';
 import { SaasAdminLoginScreen } from './modules/saas-admin/SaasAdminLoginScreen';
@@ -192,6 +193,16 @@ const MainAppContent: React.FC = () => {
       {currentMode === 'CLINIC_WEBSITE' && (
         <main className="flex-1 flex flex-col">
           <ClinicWebsitePreview isProduction={true} />
+        </main>
+      )}
+
+      {/* =========================================================================
+          MODE 5: CLINIC_BOOKING (agenda.drnewtonmureb.com.br)
+          Exclusively renders the standalone n8n Online Booking Portal
+          ========================================================================= */}
+      {currentMode === 'CLINIC_BOOKING' && (
+        <main className="flex-1 flex flex-col">
+          <PatientPortal isStandaloneBooking={true} />
         </main>
       )}
 

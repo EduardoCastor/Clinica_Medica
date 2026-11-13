@@ -16,11 +16,18 @@ import {
   Building2, 
   Layers, 
   Info,
-  Radio
+  Radio,
+  Calendar,
+  Link2,
+  Save
 } from 'lucide-react';
 import { ClinicDomain, DomainType } from '../../types';
 import { StorageService } from '../../services/storage';
 import { DomainResolver } from '../../services/domainResolver';
+import {
+  DEFAULT_N8N_WEBHOOK_DISPONIBILIDADE,
+  DEFAULT_N8N_WEBHOOK_AGENDAMENTO,
+} from '../../services/n8nService';
 
 interface DomainsManagementProps {
   onSimulateDomain?: (domain: string) => void;
@@ -41,13 +48,32 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
   const clinic = StorageService.getClinic();
   const organization = StorageService.getOrganization();
 
+  const [webhookDisp, setWebhookDisp] = useState(
+    clinic.n8nWebhookDisponibilidade || DEFAULT_N8N_WEBHOOK_DISPONIBILIDADE
+  );
+  const [webhookAgenda, setWebhookAgenda] = useState(
+    clinic.n8nWebhookAgendamento || DEFAULT_N8N_WEBHOOK_AGENDAMENTO
+  );
+
   useEffect(() => {
     const handleUpdate = () => {
       setDomains(StorageService.getClinicDomains());
+      const latestClinic = StorageService.getClinic();
+      setWebhookDisp(latestClinic.n8nWebhookDisponibilidade || DEFAULT_N8N_WEBHOOK_DISPONIBILIDADE);
+      setWebhookAgenda(latestClinic.n8nWebhookAgendamento || DEFAULT_N8N_WEBHOOK_AGENDAMENTO);
     };
     window.addEventListener('medsync_storage_update', handleUpdate);
     return () => window.removeEventListener('medsync_storage_update', handleUpdate);
   }, []);
+
+  const handleSaveWebhooks = (e: React.FormEvent) => {
+    e.preventDefault();
+    StorageService.updateClinic({
+      n8nWebhookDisponibilidade: webhookDisp.trim() || DEFAULT_N8N_WEBHOOK_DISPONIBILIDADE,
+      n8nWebhookAgendamento: webhookAgenda.trim() || DEFAULT_N8N_WEBHOOK_AGENDAMENTO,
+    });
+    showFeedback('Endpoints n8n do tenant atualizados com sucesso!', 'success');
+  };
 
   const showFeedback = (text: string, type: 'success' | 'error') => {
     setFeedbackMessage({ text, type });
@@ -138,8 +164,9 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
   const totalDomains = domains.length;
   const verifiedDomains = domains.filter(d => d.isVerified).length;
   const pendingDomains = domains.filter(d => !d.isVerified).length;
-  const appDomains = domains.filter(d => d.domainType === 'app').length;
-  const webDomains = domains.filter(d => d.domainType === 'website').length;
+  const appDomains = domains.filter(d => d.domainType === 'app' || d.domainType === 'clinic_app').length;
+  const webDomains = domains.filter(d => d.domainType === 'website' || d.domainType === 'clinic_website').length;
+  const bookingDomains = domains.filter(d => d.domainType === 'booking' || d.domainType === 'clinic_booking').length;
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -156,7 +183,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                 Domínios & Sites Institucionais
               </h1>
               <p className="text-xs text-slate-500">
-                Roteamento multi-tenant inteligente: Separação estrita entre Painel Administrativo (<code className="text-sky-700 font-mono">app.*</code>) e Site Institucional Público (<code className="text-sky-700 font-mono">www.*</code>).
+                Roteamento multi-tenant inteligente: Separação estrita entre Painel (<code className="text-sky-700 font-mono">app.*</code>), Site Institucional (<code className="text-teal-700 font-mono">www.*</code>) e Agenda Online n8n (<code className="text-amber-700 font-mono">agenda.*</code>).
               </p>
             </div>
           </div>
@@ -220,7 +247,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Total de Domínios</span>
           <div className="text-2xl font-extrabold text-slate-900 mt-1 tabular-nums">{totalDomains}</div>
-          <span className="text-[11px] text-slate-500 mt-0.5 block">{appDomains} App / {webDomains} Site</span>
+          <span className="text-[11px] text-slate-500 mt-0.5 block">{appDomains} App / {webDomains} Site / {bookingDomains} Agenda</span>
         </div>
 
         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs">
@@ -303,6 +330,11 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 font-semibold text-[11px]">
                         <Server className="w-3.5 h-3.5" />
                         <span>Painel ERP da Clínica</span>
+                      </div>
+                    ) : dom.domainType === 'booking' || dom.domainType === 'clinic_booking' ? (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-[11px]">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Agenda Online (n8n)</span>
                       </div>
                     ) : (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 font-semibold text-[11px]">
@@ -436,12 +468,12 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span className="font-bold text-slate-900 block flex items-center gap-1.5">
               <Server className="w-3.5 h-3.5 text-sky-600" />
-              1. Painel Administrativo da Clínica (Ex: app.drnewtonmureb.com.br)
+              1. Painel Administrativo (app.*)
             </span>
             <div className="space-y-1 font-mono text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
               <p>Tipo: <strong className="text-slate-900">CNAME</strong></p>
@@ -454,11 +486,24 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span className="font-bold text-slate-900 block flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5 text-teal-600" />
-              2. Site Institucional Público (Ex: www.drnewtonmureb.com.br)
+              2. Site Institucional (www.*)
             </span>
             <div className="space-y-1 font-mono text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
               <p>Tipo: <strong className="text-slate-900">CNAME</strong></p>
               <p>Nome/Host: <strong className="text-slate-900">www</strong></p>
+              <p>Destino: <strong className="text-sky-700">cname.vercel-dns.com</strong></p>
+              <p>Proxy/Nuvem: <strong className="text-slate-900">DNS Only (Desativado)</strong></p>
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <span className="font-bold text-slate-900 block flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-amber-600" />
+              3. Agenda Online n8n (agenda.*)
+            </span>
+            <div className="space-y-1 font-mono text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
+              <p>Tipo: <strong className="text-slate-900">CNAME</strong></p>
+              <p>Nome/Host: <strong className="text-slate-900">agenda</strong></p>
               <p>Destino: <strong className="text-sky-700">cname.vercel-dns.com</strong></p>
               <p>Proxy/Nuvem: <strong className="text-slate-900">DNS Only (Desativado)</strong></p>
             </div>
@@ -473,6 +518,56 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
           </span>
         </div>
       </div>
+
+      {/* n8n Tenant Webhooks Management */}
+      <form onSubmit={handleSaveWebhooks} className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-amber-600" />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Webhooks n8n da Clínica ({clinic.tradeName})
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Endpoints conectados ao subdomínio <code className="font-mono text-amber-700">agenda.*</code> para consulta de horários e confirmação automática.
+              </p>
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>Salvar Webhooks</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Endpoint Disponibilidade (GET)
+            </label>
+            <input
+              type="url"
+              value={webhookDisp}
+              onChange={(e) => setWebhookDisp(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Endpoint Agendamento (POST)
+            </label>
+            <input
+              type="url"
+              value={webhookAgenda}
+              onChange={(e) => setWebhookAgenda(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+        </div>
+      </form>
 
       {/* New Domain Modal */}
       {isModalOpen && (
@@ -515,7 +610,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                 <label className="block font-semibold text-slate-700 mb-1.5">
                   Tipo de Domínio & Destino de Ambiente
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <label className={`p-3 rounded-xl border cursor-pointer flex flex-col gap-1 transition ${
                     domainTypeInput === 'app'
                       ? 'bg-sky-50 border-sky-300 text-sky-900'
@@ -524,7 +619,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                     <div className="flex items-center justify-between">
                       <span className="font-bold flex items-center gap-1.5">
                         <Server className="w-3.5 h-3.5 text-sky-600" />
-                        Painel do Sistema
+                        Painel ERP
                       </span>
                       <input
                         type="radio"
@@ -536,7 +631,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                       />
                     </div>
                     <span className="text-[11px] text-slate-500">
-                      Roteia para login, prontuários, financeiro e agenda interna (ex: <code className="text-sky-700">app.clinica.com.br</code>).
+                      Login, prontuários, financeiro e agenda interna (<code className="text-sky-700">app.*</code>).
                     </span>
                   </label>
 
@@ -548,7 +643,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                     <div className="flex items-center justify-between">
                       <span className="font-bold flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-teal-600" />
-                        Site Institucional
+                        Site Público
                       </span>
                       <input
                         type="radio"
@@ -560,7 +655,31 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                       />
                     </div>
                     <span className="text-[11px] text-slate-500">
-                      Roteia para portal público com especialidades e agendamento (ex: <code className="text-teal-700">www.clinica.com.br</code>).
+                      Portal institucional e especialidades (<code className="text-teal-700">www.*</code>).
+                    </span>
+                  </label>
+
+                  <label className={`p-3 rounded-xl border cursor-pointer flex flex-col gap-1 transition ${
+                    domainTypeInput === 'booking'
+                      ? 'bg-amber-50 border-amber-300 text-amber-900'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                        Agenda Online
+                      </span>
+                      <input
+                        type="radio"
+                        name="domainType"
+                        value="booking"
+                        checked={domainTypeInput === 'booking'}
+                        onChange={() => setDomainTypeInput('booking')}
+                        className="text-amber-600"
+                      />
+                    </div>
+                    <span className="text-[11px] text-slate-500">
+                      Agendamento online n8n (<code className="text-amber-700">agenda.*</code>).
                     </span>
                   </label>
                 </div>
@@ -575,7 +694,13 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                   <input
                     type="text"
                     required
-                    placeholder={domainTypeInput === 'app' ? 'app.drnewtonmureb.com.br' : 'www.drnewtonmureb.com.br'}
+                    placeholder={
+                      domainTypeInput === 'app'
+                        ? 'app.drnewtonmureb.com.br'
+                        : domainTypeInput === 'booking'
+                          ? 'agenda.drnewtonmureb.com.br'
+                          : 'www.drnewtonmureb.com.br'
+                    }
                     value={domainInput}
                     onChange={(e) => setDomainInput(e.target.value)}
                     className="w-full pl-18 pr-3 py-2 border border-slate-300 rounded-lg font-mono text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"

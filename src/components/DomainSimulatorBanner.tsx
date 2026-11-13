@@ -8,7 +8,8 @@ import {
   UserCheck, 
   Building2,
   LogOut,
-  Info
+  Info,
+  Calendar
 } from 'lucide-react';
 import { ResolvedTenantContext } from '../types';
 import { DomainResolver, PRODUCTION_DOMAINS } from '../services/domainResolver';
@@ -86,6 +87,13 @@ export const DomainSimulatorBanner: React.FC<DomainSimulatorBannerProps> = ({
                 <span className="text-slate-400 font-sans font-normal">(Site Público Institucional)</span>
               </span>
             )}
+            {currentMode === 'CLINIC_BOOKING' && (
+              <span className="font-semibold text-amber-300 font-mono flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                {PRODUCTION_DOMAINS.CLINIC_BOOKING}
+                <span className="text-slate-400 font-sans font-normal">(Agenda Online n8n do Cliente)</span>
+              </span>
+            )}
           </span>
 
           {/* Impersonation Alert Badge if active */}
@@ -160,6 +168,20 @@ export const DomainSimulatorBanner: React.FC<DomainSimulatorBannerProps> = ({
           >
             <Building2 className="w-3.5 h-3.5 text-teal-400" />
             <span>4. Site do Cliente</span>
+          </button>
+
+          {/* 5. Agenda do Cliente */}
+          <button
+            onClick={() => handleSelectDomain(PRODUCTION_DOMAINS.CLINIC_BOOKING)}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 border ${
+              currentMode === 'CLINIC_BOOKING'
+                ? 'bg-amber-600 text-white border-amber-400 shadow-xs'
+                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border-slate-800'
+            }`}
+            title="Simular: agenda.drnewtonmureb.com.br (Agendamento Online n8n do Cliente)"
+          >
+            <Calendar className="w-3.5 h-3.5 text-amber-400" />
+            <span>5. Agenda do Cliente</span>
           </button>
 
         </div>

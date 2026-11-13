@@ -107,6 +107,8 @@ export const INITIAL_CLINIC: Clinic = {
   logoUrl: CLINIC_LOGO_DATA_URI,
   primaryColor: '#1E2024',
   institutionalBio: CLINIC_OFFICIAL_DATA.bio,
+  n8nWebhookDisponibilidade: 'https://n8n.srv1352561.hstgr.cloud/webhook/agendadisp',
+  n8nWebhookAgendamento: 'https://n8n.srv1352561.hstgr.cloud/webhook/agendaclinica',
   createdAt: '2024-07-15T10:00:00.000Z',
 };
 
@@ -1100,5 +1102,22 @@ export const INITIAL_CLINIC_DOMAINS: ClinicDomain[] = [
     verifiedAt: '2026-11-09T14:35:00.000Z',
     lastDnsCheckAt: '2026-11-10T10:00:00.000Z',
     createdAt: '2026-11-09T14:00:00.000Z',
+  },
+  {
+    id: 'dom_mureb_booking',
+    organizationId: 'org_mureb_01',
+    clinicId: 'clinic_mureb_01',
+    clinicName: CLINIC_OFFICIAL_DATA.tradeName,
+    domain: 'agenda.drnewtonmureb.com.br',
+    domainType: 'clinic_booking',
+    isVerified: true,
+    isActive: true,
+    verificationToken: 'medsync-verify-mureb-agenda-8a21d40f',
+    dnsStatus: 'verified',
+    sslStatus: 'active',
+    expectedCname: 'cname.vercel-dns.com',
+    verifiedAt: '2026-11-13T10:00:00.000Z',
+    lastDnsCheckAt: '2026-11-13T10:00:00.000Z',
+    createdAt: '2026-11-13T10:00:00.000Z',
   }
 ];

@@ -85,7 +85,7 @@ const STORAGE_KEYS = {
   DATA_VERSION: 'medsync_data_version',
 };
 
-export const MEDSYNC_DATA_VERSION = '2026.11.13-newton-mureb';
+export const MEDSYNC_DATA_VERSION = '2026.11.13-newton-mureb-n8n-agenda';
 
 let migrationChecked = false;
 
@@ -117,13 +117,54 @@ export function runDataMigrationIfNeeded(): void {
         rawBranches!.includes('branch_rj_ipanema') ||
         rawBranches!.includes('Bela Cintra'));
 
-    const needsMigration =
-      currentVersion !== MEDSYNC_DATA_VERSION ||
+    const needsLegacyReset =
       hasLegacyClinic ||
       hasLegacyProfessional ||
-      hasLegacyBranches;
+      hasLegacyBranches ||
+      !currentVersion;
 
-    if (!needsMigration) return;
+    // Incremental non-destructive migration when upgrading from 2026.11.13-newton-mureb
+    if (!needsLegacyReset && currentVersion !== MEDSYNC_DATA_VERSION) {
+      if (rawClinic) {
+        try {
+          const parsedClinic = JSON.parse(rawClinic) as Clinic;
+          const updatedClinic: Clinic = {
+            ...parsedClinic,
+            n8nWebhookDisponibilidade:
+              parsedClinic.n8nWebhookDisponibilidade || INITIAL_CLINIC.n8nWebhookDisponibilidade,
+            n8nWebhookAgendamento:
+              parsedClinic.n8nWebhookAgendamento || INITIAL_CLINIC.n8nWebhookAgendamento,
+          };
+          localStorage.setItem(STORAGE_KEYS.CLINIC, JSON.stringify(updatedClinic));
+        } catch {
+          localStorage.setItem(STORAGE_KEYS.CLINIC, JSON.stringify(INITIAL_CLINIC));
+        }
+      }
+
+      const rawDomains = localStorage.getItem(STORAGE_KEYS.CLINIC_DOMAINS);
+      if (rawDomains) {
+        try {
+          const parsedDomains = JSON.parse(rawDomains) as ClinicDomain[];
+          const hasBooking = parsedDomains.some(
+            d => d.domain === 'agenda.drnewtonmureb.com.br' || d.domainType === 'clinic_booking' || d.domainType === 'booking'
+          );
+          if (!hasBooking) {
+            const bookingSeed = INITIAL_CLINIC_DOMAINS.find(d => d.id === 'dom_mureb_booking');
+            if (bookingSeed) {
+              parsedDomains.push(bookingSeed);
+              localStorage.setItem(STORAGE_KEYS.CLINIC_DOMAINS, JSON.stringify(parsedDomains));
+            }
+          }
+        } catch {
+          localStorage.setItem(STORAGE_KEYS.CLINIC_DOMAINS, JSON.stringify(INITIAL_CLINIC_DOMAINS));
+        }
+      }
+
+      localStorage.setItem(STORAGE_KEYS.DATA_VERSION, MEDSYNC_DATA_VERSION);
+      return;
+    }
+
+    if (!needsLegacyReset) return;
 
     // Upgrade core clinic, org, branches, rooms, specialties, professionals, services, users, website, domains
     localStorage.setItem(STORAGE_KEYS.ORGANIZATION, JSON.stringify(INITIAL_ORGANIZATION));
@@ -638,6 +679,38 @@ export const StorageService = {
 
     return { success: true };
   },
+  upsertPatientByCpf: (patient: Patient): Patient => {
+    const list = getStored<Patient[]>(STORAGE_KEYS.PATIENTS, INITIAL_PATIENTS);
+    const normalizedCpf = patient.documentCpf.replace(/\D/g, '');
+    const existingIndex = list.findIndex(
+      p => p.documentCpf.replace(/\D/g, '') === normalizedCpf
+    );
+
+    if (existingIndex >= 0) {
+      const existing = list[existingIndex];
+      const merged: Patient = {
+        ...existing,
+        fullName: patient.fullName || existing.fullName,
+        phone: patient.phone || existing.phone,
+        whatsapp: patient.whatsapp || existing.whatsapp,
+        email: patient.email || existing.email,
+        administrativeNotes: patient.administrativeNotes || existing.administrativeNotes,
+      };
+      list[existingIndex] = merged;
+      setStored(STORAGE_KEYS.PATIENTS, list);
+      return merged;
+    }
+
+    list.unshift(patient);
+    setStored(STORAGE_KEYS.PATIENTS, list);
+    StorageService.addAuditLog({
+      action: 'Paciente Cadastrado via Agenda Online',
+      entity: 'Paciente',
+      entityId: patient.id,
+      details: `${patient.fullName} (${patient.documentCpf}) - Origem: Agendamento Online`,
+    });
+    return patient;
+  },
 
   // Appointments
   getAppointments: (branchFilterId?: string): Appointment[] => {
@@ -1013,10 +1086,31 @@ export const StorageService = {
       return { success: false, error: `O domínio "${cleanDomain}" já está em uso por outra clínica ou ambiente.` };
     }
 
-    // Validate only one domain per (clinic_id, domain_type)
-    const existingType = list.find(d => d.clinicId === domain.clinicId && d.domainType === domain.domainType && d.id !== domain.id);
+    // Validate only one domain per (clinic_id, canonical domain_type), allowing multiple website/apex aliases
+    const normalizeDomainCat = (t: ClinicDomain['domainType']) => {
+      if (t === 'app' || t === 'clinic_app') return 'app';
+      if (t === 'booking' || t === 'clinic_booking') return 'booking';
+      return 'website';
+    };
+    const targetCat = normalizeDomainCat(domain.domainType);
+    const existingType = list.find(
+      d =>
+        d.clinicId === domain.clinicId &&
+        normalizeDomainCat(d.domainType) === targetCat &&
+        d.id !== domain.id &&
+        targetCat !== 'website'
+    );
     if (existingType) {
-      return { success: false, error: `A clínica já possui um domínio configurado para o tipo ${domain.domainType === 'app' ? 'Painel do Sistema' : 'Site Institucional'}. Remova ou edite o existente.` };
+      const catLabel =
+        targetCat === 'app'
+          ? 'Painel do Sistema'
+          : targetCat === 'booking'
+            ? 'Agenda Online (n8n)'
+            : 'Site Institucional';
+      return {
+        success: false,
+        error: `A clínica já possui um domínio configurado para o tipo ${catLabel}. Remova ou edite o existente.`,
+      };
     }
 
     const domainToSave: ClinicDomain = {

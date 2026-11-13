@@ -10,15 +10,17 @@ export const PRODUCTION_DOMAINS = {
   CLINIC_APP: 'app.drnewtonmureb.com.br',
   CLINIC_WEBSITE: 'www.drnewtonmureb.com.br',
   CLINIC_APEX: 'drnewtonmureb.com.br',
+  CLINIC_BOOKING: 'agenda.drnewtonmureb.com.br',
 } as const;
 
 /**
  * Domain Resolver for MedSync SaaS Multi-tenant Architecture.
- * Strictly separates 4 operational domain contexts:
+ * Strictly separates 5 operational domain contexts:
  * 1. SAAS_LANDING: medsync.beaverstraining.com.br (Commercial landing page)
  * 2. SAAS_ADMIN: painelclinica.beaverstraining.com.br (Super Admin SaaS portal)
  * 3. CLINIC_APP: app.drnewtonmureb.com.br (White-label clinic operational ERP)
  * 4. CLINIC_WEBSITE: www.drnewtonmureb.com.br / drnewtonmureb.com.br (Public institutional website)
+ * 5. CLINIC_BOOKING: agenda.drnewtonmureb.com.br (Public standalone booking portal integrated with n8n)
  */
 export const DomainResolver = {
   /**
@@ -166,6 +168,26 @@ export const DomainResolver = {
     const matchedDomain = StorageService.findDomainByName(effectiveDomain);
     if (matchedDomain) {
       const isApp = matchedDomain.domainType === 'clinic_app' || matchedDomain.domainType === 'app';
+      const isBooking =
+        matchedDomain.domainType === 'clinic_booking' ||
+        matchedDomain.domainType === 'booking' ||
+        effectiveDomain.startsWith('agenda.');
+
+      if (isBooking) {
+        return {
+          resolved: true,
+          mode: 'CLINIC_BOOKING',
+          environment: 'booking',
+          domain: matchedDomain,
+          organizationId: matchedDomain.organizationId,
+          clinicId: matchedDomain.clinicId,
+          isSimulation:
+            simulationAllowed &&
+            (Boolean(simulatedDomain) || this.normalizeHostname(window.location.hostname) !== matchedDomain.domain),
+          impersonatingClinicId,
+        };
+      }
+
       return {
         resolved: true,
         mode: isApp ? 'CLINIC_APP' : 'CLINIC_WEBSITE',
@@ -173,7 +195,22 @@ export const DomainResolver = {
         domain: matchedDomain,
         organizationId: matchedDomain.organizationId,
         clinicId: matchedDomain.clinicId,
-        isSimulation: simulationAllowed && (Boolean(simulatedDomain) || this.normalizeHostname(window.location.hostname) !== matchedDomain.domain),
+        isSimulation:
+          simulationAllowed &&
+          (Boolean(simulatedDomain) || this.normalizeHostname(window.location.hostname) !== matchedDomain.domain),
+        impersonatingClinicId,
+      };
+    }
+
+    // Fallback check for any agenda.* subdomain not yet added to local registry
+    if (effectiveDomain.startsWith('agenda.') || effectiveDomain === 'agenda') {
+      return {
+        resolved: true,
+        mode: 'CLINIC_BOOKING',
+        environment: 'booking',
+        organizationId: 'org_mureb_01',
+        clinicId: 'clinic_mureb_01',
+        isSimulation: simulationAllowed && Boolean(simulatedDomain),
         impersonatingClinicId,
       };
     }
