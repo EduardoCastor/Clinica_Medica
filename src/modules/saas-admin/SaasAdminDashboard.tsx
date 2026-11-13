@@ -18,8 +18,13 @@ import {
   Sparkles,
   Check
 } from 'lucide-react';
-import { Plan, Organization } from '../../types';
-import { StorageService } from '../../services/storage';
+import { Plan } from '../../types';
+import {
+  StorageService,
+  syncPlansFromSupabase,
+  updatePlanInSupabase,
+  getLastPlanSyncError,
+} from '../../services/storage';
 import { useTenant } from '../../contexts/TenantContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { DomainsManagement } from './DomainsManagement';
@@ -32,40 +37,58 @@ export const SaasAdminDashboard: React.FC<SaasAdminDashboardProps> = ({ onSimula
   const { organization, updateOrganization } = useTenant();
   const { impersonateClinic } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'domains'>('domains');
-  const [plansList, setPlansList] = useState<Plan[]>(() => StorageService.getPlans());
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
-  // Sync plans whenever changed anywhere in the system
+  // Sync plans from Supabase on mount and whenever updated
   useEffect(() => {
-    const sync = () => {
-      setPlansList(StorageService.getPlans());
+    syncPlansFromSupabase().then(setPlans);
+
+    const syncLocal = () => {
+      setPlans(StorageService.getPlans());
     };
-    window.addEventListener('medsync-plans-updated', sync);
-    window.addEventListener('medsync_storage_update', sync);
+    window.addEventListener('medsync-plans-updated', syncLocal);
+    window.addEventListener('medsync_storage_update', syncLocal);
     return () => {
-      window.removeEventListener('medsync-plans-updated', sync);
-      window.removeEventListener('medsync_storage_update', sync);
+      window.removeEventListener('medsync-plans-updated', syncLocal);
+      window.removeEventListener('medsync_storage_update', syncLocal);
     };
   }, []);
 
   // Metrics
   const activeTenantsCount = 18;
   const trialTenantsCount = 6;
-  const advancedPlan = plansList.find(p => p.code === 'advanced');
-  const basicPlan = plansList.find(p => p.code === 'basic');
+  const advancedPlan = plans.find(p => p.code === 'advanced');
+  const basicPlan = plans.find(p => p.code === 'basic');
   const mrr = (14 * (advancedPlan?.priceMonthly || 589)) + (4 * (basicPlan?.priceMonthly || 249));
   const trialConversionRate = 72;
 
-  const handleSavePlan = (e: React.FormEvent) => {
+  const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPlan) return;
-    
-    StorageService.savePlan(editingPlan);
-    setPlansList(StorageService.getPlans());
-    setEditingPlan(null);
-    setFeedbackMessage('Plano comercial atualizado e publicado na Landing Page com sucesso!');
-    setTimeout(() => setFeedbackMessage(null), 4000);
+    if (!editingPlan || isSavingPlan) return;
+
+    setIsSavingPlan(true);
+    try {
+      const success = await updatePlanInSupabase(editingPlan);
+      if (!success) {
+        const errorDetail = getLastPlanSyncError() || 'Erro desconhecido ao persistir plano no Supabase.';
+        alert(`Erro ao salvar alterações no Supabase:\n\n${errorDetail}`);
+        return;
+      }
+
+      const freshPlans = await syncPlansFromSupabase();
+      setPlans(freshPlans);
+      setEditingPlan(null);
+      setFeedbackMessage('Plano comercial atualizado no Supabase e publicado na Landing Page com sucesso!');
+      setTimeout(() => setFeedbackMessage(null), 5000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Erro inesperado ao salvar plano no Supabase:\n\n${message}`);
+    } finally {
+      setIsSavingPlan(false);
+    }
   };
 
   const toggleTenantStatus = () => {
@@ -189,7 +212,7 @@ export const SaasAdminDashboard: React.FC<SaasAdminDashboardProps> = ({ onSimula
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plansList.map((plan) => (
+          {plans.map((plan) => (
             <div key={plan.id} className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3 text-xs flex flex-col justify-between relative">
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-1 flex-wrap">
@@ -531,10 +554,11 @@ export const SaasAdminDashboard: React.FC<SaasAdminDashboardProps> = ({ onSimula
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md transition flex items-center gap-1.5"
+                  disabled={isSavingPlan}
+                  className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-60 rounded-xl shadow-md transition flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Salvar e Publicar na Landing Page</span>
+                  <span>{isSavingPlan ? 'Salvando no Supabase...' : 'Salvar e Publicar na Landing Page'}</span>
                 </button>
               </div>
             </form>

@@ -15,8 +15,8 @@ import {
   Layers,
   ChevronDown
 } from 'lucide-react';
-import { Plan, SaasPlan } from '../../types';
-import { StorageService } from '../../services/storage';
+import { SaasPlan } from '../../types';
+import { syncPlansFromSupabase } from '../../services/storage';
 
 interface LandingPageProps {
   onAccessClinic: () => void;
@@ -24,21 +24,47 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAccessSuperAdmin }) => {
-  const [plans, setPlans] = useState<SaasPlan[]>(() => StorageService.getPlans());
+  const [plans, setPlans] = useState<SaasPlan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState<boolean>(true);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-  // Dynamically sync plans from storage or remote events
+  // Dynamically sync plans from Supabase on mount, window focus, and plan update events
   useEffect(() => {
-    const syncPlans = () => {
-      setPlans(StorageService.getPlans());
+    let isMounted = true;
+
+    const loadPlans = () => {
+      syncPlansFromSupabase()
+        .then((remotePlans) => {
+          if (isMounted && remotePlans?.length) {
+            setPlans(remotePlans);
+          }
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingPlans(false);
+        });
     };
-    
-    syncPlans();
-    window.addEventListener('medsync-plans-updated', syncPlans);
-    window.addEventListener('medsync_storage_update', syncPlans);
+
+    loadPlans();
+
+    const handleFocus = () => {
+      loadPlans();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadPlans();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('medsync-plans-updated', loadPlans);
+
     return () => {
-      window.removeEventListener('medsync-plans-updated', syncPlans);
-      window.removeEventListener('medsync_storage_update', syncPlans);
+      isMounted = false;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('medsync-plans-updated', loadPlans);
     };
   }, []);
 
@@ -244,6 +270,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAcce
           </div>
 
           {/* Dynamic Plan Cards */}
+          {isLoadingPlans && plans.length === 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+              {[0, 1, 2].map((idx) => (
+                <div
+                  key={idx}
+                  className="rounded-2xl p-6 bg-white border border-slate-200 shadow-xs space-y-4 animate-pulse"
+                >
+                  <div className="h-5 w-32 bg-slate-200 rounded" />
+                  <div className="h-3 w-full bg-slate-100 rounded" />
+                  <div className="h-8 w-28 bg-slate-200 rounded mt-4" />
+                  <div className="h-px bg-slate-100 my-4" />
+                  <div className="space-y-2.5">
+                    <div className="h-3 w-4/5 bg-slate-100 rounded" />
+                    <div className="h-3 w-3/4 bg-slate-100 rounded" />
+                    <div className="h-3 w-5/6 bg-slate-100 rounded" />
+                    <div className="h-3 w-2/3 bg-slate-100 rounded" />
+                  </div>
+                  <div className="h-10 w-full bg-slate-200 rounded-xl mt-6" />
+                </div>
+              ))}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {plans.filter(p => p.isActive !== false).map((plan) => {
               const isPopular = Boolean(plan.isPopular || plan.code === 'advanced');
@@ -364,6 +412,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAccessClinic, onAcce
               );
             })}
           </div>
+          )}
 
         </div>
       </section>

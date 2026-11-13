@@ -109,6 +109,224 @@ function setStored<T>(key: string, value: T): void {
   }
 }
 
+let lastPlanSyncError: string | null = null;
+
+export function getLastPlanSyncError(): string | null {
+  return lastPlanSyncError;
+}
+
+function mapDbPlanToPlan(row: Record<string, unknown>, localFallback?: Plan): Plan {
+  const code = String(row.code || row.id || '');
+  const hasWhatsapp = Boolean(row.has_whatsapp_automation ?? row.hasWhatsAppAutomation);
+  return {
+    id: String(row.id || localFallback?.id || code),
+    code,
+    name: String(row.name || localFallback?.name || ''),
+    description: String(row.description ?? localFallback?.description ?? ''),
+    priceMonthly: Number(row.price_monthly ?? row.priceMonthly ?? 0),
+    priceYearly: Number(row.price_yearly ?? row.priceYearly ?? 0),
+    trialDays: Number(row.trial_days ?? row.trialDays ?? 0),
+    maxBranches: Number(row.max_branches ?? row.maxBranches ?? 1),
+    maxUsers: Number(row.max_users ?? row.maxUsers ?? 1),
+    maxPatients: Number(row.max_patients ?? row.maxPatients ?? 100),
+    hasPatientSharing: Boolean(row.has_patient_sharing ?? row.hasPatientSharing),
+    hasWhatsAppAutomation: hasWhatsapp,
+    hasWhatsappAutomation: hasWhatsapp,
+    hasCustomWebsite: Boolean(row.has_custom_website ?? row.hasCustomWebsite),
+    hasFinancialModule: Boolean(row.has_financial_module ?? row.hasFinancialModule),
+    hasAdvancedReports: Boolean(row.has_advanced_reports ?? row.hasAdvancedReports),
+    isPopular:
+      row.is_popular !== undefined
+        ? Boolean(row.is_popular)
+        : row.isPopular !== undefined
+        ? Boolean(row.isPopular)
+        : localFallback?.isPopular ?? code === 'advanced',
+    features: Array.isArray(row.features) ? (row.features as string[]) : localFallback?.features,
+    isActive:
+      row.is_active !== undefined
+        ? Boolean(row.is_active)
+        : row.isActive !== undefined
+        ? Boolean(row.isActive)
+        : true,
+  };
+}
+
+function buildPlanDbPayload(plan: Plan | SaasPlan) {
+  return {
+    code: plan.code,
+    name: plan.name,
+    description: plan.description || '',
+    price_monthly: Number(plan.priceMonthly) || 0,
+    price_yearly: Number(plan.priceYearly) || 0,
+    trial_days: Number(plan.trialDays) || 0,
+    max_branches: Number(plan.maxBranches) || 1,
+    max_users: Number(plan.maxUsers) || 1,
+    max_patients: Number(plan.maxPatients) || 0,
+    has_patient_sharing: Boolean(plan.hasPatientSharing),
+    has_whatsapp_automation: Boolean(plan.hasWhatsAppAutomation ?? plan.hasWhatsappAutomation),
+    has_custom_website: Boolean(plan.hasCustomWebsite),
+    has_financial_module: Boolean(plan.hasFinancialModule),
+    has_advanced_reports: Boolean(plan.hasAdvancedReports),
+    is_active: plan.isActive !== false,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function getLocalPlansOnly(): Plan[] {
+  if (typeof window === 'undefined') return INITIAL_PLANS;
+  let plans: Plan[] | null = null;
+  try {
+    const rawSaas = localStorage.getItem(STORAGE_KEYS.PLANS);
+    if (rawSaas) {
+      plans = JSON.parse(rawSaas) as Plan[];
+    }
+    if (!plans || !Array.isArray(plans) || plans.length === 0) {
+      const rawLegacy = localStorage.getItem(STORAGE_KEYS.LEGACY_PLANS);
+      if (rawLegacy) {
+        plans = JSON.parse(rawLegacy) as Plan[];
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao ler planos do localStorage:', e);
+  }
+
+  if (!plans || !Array.isArray(plans) || plans.length === 0) {
+    plans = INITIAL_PLANS;
+    localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
+    localStorage.setItem(STORAGE_KEYS.LEGACY_PLANS, JSON.stringify(plans));
+  }
+
+  return plans;
+}
+
+export async function syncPlansFromSupabase(): Promise<Plan[]> {
+  const localPlans = getLocalPlansOnly();
+  const supabase = getSupabase();
+  if (!supabase) {
+    lastPlanSyncError = 'Supabase não configurado (variáveis VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY ausentes).';
+    return localPlans;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('plans')
+      .select('*')
+      .order('price_monthly', { ascending: true });
+
+    if (error) {
+      lastPlanSyncError = `${error.message}${error.details ? ` (${error.details})` : ''}`;
+      console.error('Erro ao buscar planos no Supabase:', error);
+      return localPlans;
+    }
+
+    lastPlanSyncError = null;
+
+    if (data && data.length > 0) {
+      const mapped = data.map((row: Record<string, unknown>) => {
+        const localMatch = localPlans.find(p => p.code === String(row.code || '') || p.id === String(row.id || ''));
+        return mapDbPlanToPlan(row, localMatch);
+      });
+
+      if (typeof window !== 'undefined') {
+        const serialized = JSON.stringify(mapped);
+        localStorage.setItem(STORAGE_KEYS.PLANS, serialized);
+        localStorage.setItem(STORAGE_KEYS.LEGACY_PLANS, serialized);
+      }
+
+      return mapped;
+    }
+
+    return localPlans;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    lastPlanSyncError = message;
+    console.error('Exceção ao sincronizar planos do Supabase:', err);
+    return localPlans;
+  }
+}
+
+export async function updatePlanInSupabase(plan: Plan): Promise<boolean> {
+  const normalizedPlan: Plan = {
+    ...plan,
+    priceMonthly: Number(plan.priceMonthly) || 0,
+    priceYearly: Number(plan.priceYearly) || 0,
+    trialDays: Number(plan.trialDays) || 0,
+    maxBranches: Number(plan.maxBranches) || 1,
+    maxUsers: Number(plan.maxUsers) || 1,
+    maxPatients: Number(plan.maxPatients) || 0,
+    hasWhatsAppAutomation: Boolean(plan.hasWhatsAppAutomation ?? plan.hasWhatsappAutomation),
+    hasWhatsappAutomation: Boolean(plan.hasWhatsAppAutomation ?? plan.hasWhatsappAutomation),
+    hasCustomWebsite: Boolean(plan.hasCustomWebsite),
+    hasFinancialModule: Boolean(plan.hasFinancialModule),
+    hasAdvancedReports: Boolean(plan.hasAdvancedReports),
+    hasPatientSharing: Boolean(plan.hasPatientSharing),
+    isPopular: Boolean(plan.isPopular),
+    isActive: plan.isActive !== false,
+  };
+
+  // Persist locally immediately
+  const list = getLocalPlansOnly();
+  const index = list.findIndex(p => p.code === normalizedPlan.code || p.id === normalizedPlan.id);
+  if (index >= 0) {
+    list[index] = normalizedPlan;
+  } else {
+    list.push(normalizedPlan);
+  }
+  if (typeof window !== 'undefined') {
+    const serialized = JSON.stringify(list);
+    localStorage.setItem(STORAGE_KEYS.PLANS, serialized);
+    localStorage.setItem(STORAGE_KEYS.LEGACY_PLANS, serialized);
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) {
+    lastPlanSyncError = 'Supabase não configurado neste ambiente (verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY).';
+    return false;
+  }
+
+  try {
+    const dbPayload = buildPlanDbPayload(normalizedPlan);
+    const { data, error } = await supabase
+      .from('plans')
+      .upsert(dbPayload, { onConflict: 'code' })
+      .select();
+
+    if (error) {
+      lastPlanSyncError = `${error.message}${error.details ? ` (${error.details})` : ''}${error.hint ? ` — ${error.hint}` : ''}`;
+      console.error('Erro ao fazer upsert do plano no Supabase:', error);
+      return false;
+    }
+
+    if (!data || data.length === 0) {
+      lastPlanSyncError = 'O Supabase não retornou registros atualizados (possível bloqueio de RLS para INSERT/UPDATE na tabela public.plans).';
+      console.error(lastPlanSyncError);
+      return false;
+    }
+
+    lastPlanSyncError = null;
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('medsync-plans-updated'));
+      window.dispatchEvent(new CustomEvent('medsync-plans-updated', { detail: { plans: list, updatedPlan: normalizedPlan } }));
+      window.dispatchEvent(new Event('medsync_storage_update'));
+    }
+
+    StorageService.addAuditLog({
+      action: 'Atualizou Plano Comercial',
+      entity: 'Planos SaaS',
+      entityId: String(data[0].id || normalizedPlan.id),
+      details: `Plano ${normalizedPlan.name}: R$ ${normalizedPlan.priceMonthly.toFixed(2)}/mês (R$ ${normalizedPlan.priceYearly.toFixed(2)}/ano)`,
+    });
+
+    return true;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    lastPlanSyncError = message;
+    console.error('Exceção ao atualizar plano no Supabase:', err);
+    return false;
+  }
+}
+
 // Storage Service API
 export const StorageService = {
   // Reset all data to factory demo state
@@ -139,166 +357,16 @@ export const StorageService = {
   },
 
   // SaaS Plans (Persisted in localStorage & Supabase with real-time events)
+  syncPlansFromSupabase,
+  updatePlanInSupabase,
+  getLastPlanSyncError,
+
   getPlans: (): Plan[] => {
-    if (typeof window === 'undefined') return INITIAL_PLANS;
-    
-    // 1. Read from medsync_saas_plans, fallback to legacy medsync_plans, then INITIAL_PLANS
-    let plans: Plan[] | null = null;
-    try {
-      const rawSaas = localStorage.getItem(STORAGE_KEYS.PLANS);
-      if (rawSaas) {
-        plans = JSON.parse(rawSaas) as Plan[];
-      }
-      if (!plans || !Array.isArray(plans) || plans.length === 0) {
-        const rawLegacy = localStorage.getItem(STORAGE_KEYS.LEGACY_PLANS);
-        if (rawLegacy) {
-          plans = JSON.parse(rawLegacy) as Plan[];
-        }
-      }
-    } catch (e) {
-      console.warn('Erro ao ler planos do localStorage:', e);
-    }
-
-    if (!plans || !Array.isArray(plans) || plans.length === 0) {
-      plans = INITIAL_PLANS;
-      localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
-      localStorage.setItem(STORAGE_KEYS.LEGACY_PLANS, JSON.stringify(plans));
-    }
-
-    // 2. Asynchronous background fetch from Supabase if configured and online
-    const supabase = getSupabase();
-    if (supabase) {
-      Promise.resolve(
-        supabase
-          .from('plans')
-          .select('*')
-          .order('price_monthly', { ascending: true })
-      )
-        .then(({ data, error }) => {
-          if (!error && data && data.length > 0) {
-            const mapped: Plan[] = data.map((row: Record<string, unknown>) => ({
-              id: String(row.id),
-              code: (row.code as string) || String(row.id),
-              name: String(row.name),
-              description: String(row.description || ''),
-              priceMonthly: Number(row.price_monthly ?? row.priceMonthly ?? 0),
-              priceYearly: Number(row.price_yearly ?? row.priceYearly ?? 0),
-              trialDays: Number(row.trial_days ?? row.trialDays ?? 0),
-              maxBranches: Number(row.max_branches ?? row.maxBranches ?? 1),
-              maxUsers: Number(row.max_users ?? row.maxUsers ?? 1),
-              maxPatients: Number(row.max_patients ?? row.maxPatients ?? 100),
-              hasPatientSharing: Boolean(row.has_patient_sharing ?? row.hasPatientSharing),
-              hasWhatsAppAutomation: Boolean(row.has_whatsapp_automation ?? row.hasWhatsAppAutomation),
-              hasWhatsappAutomation: Boolean(row.has_whatsapp_automation ?? row.hasWhatsAppAutomation),
-              hasCustomWebsite: Boolean(row.has_custom_website ?? row.hasCustomWebsite),
-              hasFinancialModule: Boolean(row.has_financial_module ?? row.hasFinancialModule),
-              hasAdvancedReports: Boolean(row.has_advanced_reports ?? row.hasAdvancedReports),
-              isPopular: Boolean(row.is_popular ?? row.isPopular),
-              features: Array.isArray(row.features) ? (row.features as string[]) : undefined,
-              isActive: row.is_active !== undefined ? Boolean(row.is_active) : (row.isActive !== undefined ? Boolean(row.isActive) : true),
-            }));
-
-            const localSerialized = localStorage.getItem(STORAGE_KEYS.PLANS);
-            const remoteSerialized = JSON.stringify(mapped);
-            if (localSerialized !== remoteSerialized) {
-              localStorage.setItem(STORAGE_KEYS.PLANS, remoteSerialized);
-              localStorage.setItem(STORAGE_KEYS.LEGACY_PLANS, remoteSerialized);
-              window.dispatchEvent(new Event('medsync-plans-updated'));
-              window.dispatchEvent(new Event('medsync_storage_update'));
-            }
-          }
-        })
-        .catch(() => {});
-    }
-
-    return plans;
+    return getLocalPlansOnly();
   },
 
   savePlan: (plan: Plan | SaasPlan): void => {
-    const list = StorageService.getPlans();
-    const index = list.findIndex(p => p.id === plan.id || p.code === plan.code);
-    
-    // Normalize plan fields and values
-    const normalizedPlan: Plan = {
-      ...plan,
-      priceMonthly: Number(plan.priceMonthly) || 0,
-      priceYearly: Number(plan.priceYearly) || 0,
-      trialDays: Number(plan.trialDays) || 0,
-      maxBranches: Number(plan.maxBranches) || 1,
-      maxUsers: Number(plan.maxUsers) || 1,
-      maxPatients: Number(plan.maxPatients) || 0,
-      hasWhatsAppAutomation: Boolean(plan.hasWhatsAppAutomation ?? plan.hasWhatsappAutomation),
-      hasWhatsappAutomation: Boolean(plan.hasWhatsAppAutomation ?? plan.hasWhatsappAutomation),
-      hasCustomWebsite: Boolean(plan.hasCustomWebsite),
-      hasFinancialModule: Boolean(plan.hasFinancialModule),
-      hasAdvancedReports: Boolean(plan.hasAdvancedReports),
-      hasPatientSharing: Boolean(plan.hasPatientSharing),
-      isPopular: Boolean(plan.isPopular),
-      isActive: plan.isActive !== false,
-    };
-
-    if (index >= 0) {
-      list[index] = normalizedPlan;
-    } else {
-      list.push(normalizedPlan);
-    }
-
-    // 1. Immediately persist to localStorage under both keys
-    if (typeof window !== 'undefined') {
-      const serialized = JSON.stringify(list);
-      localStorage.setItem(STORAGE_KEYS.PLANS, serialized);
-      localStorage.setItem(STORAGE_KEYS.LEGACY_PLANS, serialized);
-    }
-
-    // 2. Perform async upsert into Supabase public.plans if configured
-    const supabase = getSupabase();
-    if (supabase) {
-      const dbPayload = {
-        id: normalizedPlan.id,
-        code: normalizedPlan.code,
-        name: normalizedPlan.name,
-        description: normalizedPlan.description,
-        price_monthly: normalizedPlan.priceMonthly,
-        price_yearly: normalizedPlan.priceYearly,
-        trial_days: normalizedPlan.trialDays,
-        max_branches: normalizedPlan.maxBranches,
-        max_users: normalizedPlan.maxUsers,
-        max_patients: normalizedPlan.maxPatients,
-        has_patient_sharing: normalizedPlan.hasPatientSharing,
-        has_whatsapp_automation: normalizedPlan.hasWhatsAppAutomation,
-        has_custom_website: normalizedPlan.hasCustomWebsite,
-        has_financial_module: normalizedPlan.hasFinancialModule,
-        has_advanced_reports: normalizedPlan.hasAdvancedReports,
-        is_popular: Boolean(normalizedPlan.isPopular),
-        features: normalizedPlan.features || [],
-        is_active: normalizedPlan.isActive,
-        updated_at: new Date().toISOString(),
-      };
-
-      Promise.resolve(supabase.from('plans').upsert(dbPayload))
-        .then(({ error }) => {
-          if (error) {
-            console.warn('Aviso: Sincronização Supabase de planos retornou aviso:', error.message);
-          }
-        })
-        .catch(err => {
-          console.warn('Exceção ao sincronizar plano no Supabase:', err);
-        });
-    }
-
-    // 3. Dispatch notifications for real-time reactivity in LandingPage, SaasAdmin, etc.
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('medsync-plans-updated'));
-      window.dispatchEvent(new CustomEvent('medsync-plans-updated', { detail: { plans: list, updatedPlan: normalizedPlan } }));
-      window.dispatchEvent(new Event('medsync_storage_update'));
-    }
-
-    StorageService.addAuditLog({
-      action: 'Atualizou Plano Comercial',
-      entity: 'Planos SaaS',
-      entityId: normalizedPlan.id,
-      details: `Plano ${normalizedPlan.name}: R$ ${normalizedPlan.priceMonthly.toFixed(2)}/mês (R$ ${normalizedPlan.priceYearly.toFixed(2)}/ano)`,
-    });
+    void updatePlanInSupabase(plan as Plan);
   },
 
   updatePlans: (plans: Plan[] | SaasPlan[]): void => {
@@ -310,29 +378,13 @@ export const StorageService = {
 
     const supabase = getSupabase();
     if (supabase) {
-      const payloads = plans.map(p => ({
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        description: p.description,
-        price_monthly: Number(p.priceMonthly) || 0,
-        price_yearly: Number(p.priceYearly) || 0,
-        trial_days: Number(p.trialDays) || 0,
-        max_branches: Number(p.maxBranches) || 1,
-        max_users: Number(p.maxUsers) || 1,
-        max_patients: Number(p.maxPatients) || 0,
-        has_patient_sharing: Boolean(p.hasPatientSharing),
-        has_whatsapp_automation: Boolean(p.hasWhatsAppAutomation ?? p.hasWhatsappAutomation),
-        has_custom_website: Boolean(p.hasCustomWebsite),
-        has_financial_module: Boolean(p.hasFinancialModule),
-        has_advanced_reports: Boolean(p.hasAdvancedReports),
-        is_popular: Boolean(p.isPopular),
-        features: p.features || [],
-        is_active: p.isActive !== false,
-        updated_at: new Date().toISOString(),
-      }));
-
-      Promise.resolve(supabase.from('plans').upsert(payloads))
+      const payloads = plans.map(p => buildPlanDbPayload(p));
+      Promise.resolve(supabase.from('plans').upsert(payloads, { onConflict: 'code' }))
+        .then(({ error }) => {
+          if (error) {
+            console.warn('Erro ao sincronizar lista de planos no Supabase:', error.message);
+          }
+        })
         .catch(err => console.warn('Erro ao sincronizar lista de planos no Supabase:', err));
     }
 
