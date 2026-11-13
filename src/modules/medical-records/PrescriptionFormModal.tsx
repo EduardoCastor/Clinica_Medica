@@ -88,7 +88,7 @@ export const PrescriptionFormModal: React.FC<PrescriptionFormModalProps> = ({
       patientAddress: patient.address ? `${patient.address}, ${patient.addressNumber || ''} - ${patient.city || ''}/${patient.state || ''}` : undefined,
       professionalId: currentUser.id,
       professionalName: currentUser.fullName,
-      professionalCouncil: 'CRM 84.320/SP · RQE 41.200',
+      professionalCouncil: 'CRM/RJ 52-444985',
       type,
       specialControlNotificationType: type === 'controle_especial' ? specialControlNotificationType : undefined,
       prescriptionDate: new Date().toISOString().split('T')[0],
@@ -98,8 +98,8 @@ export const PrescriptionFormModal: React.FC<PrescriptionFormModalProps> = ({
       isSigned: true,
       signatureHash: `sha256_rx_${Math.random().toString(36).substring(2, 12)}`,
       buyerIdentification: type === 'controle_especial' ? {
-        city: patient.city || 'São Paulo',
-        state: patient.state || 'SP'
+        city: patient.city || 'Cabo Frio',
+        state: patient.state || 'RJ'
       } : undefined,
       createdAt: new Date().toISOString(),
     };
@@ -355,7 +355,7 @@ export const PrescriptionFormModal: React.FC<PrescriptionFormModalProps> = ({
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-xs text-emerald-900">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Assinatura Digital ICP-Brasil: <strong>{currentUser.fullName} (CRM 84.320/SP)</strong></span>
+              <span>Assinatura Digital ICP-Brasil: <strong>Dr. Newton Mureb (CRM/RJ 52-444985)</strong></span>
             </div>
             <span className="text-[11px] font-mono text-emerald-700">Validade: {validityDays} dias</span>
           </div>

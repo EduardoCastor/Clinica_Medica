@@ -7,17 +7,16 @@ import {
   ChevronDown, 
   ShieldCheck, 
   Stethoscope, 
-  Activity, 
   Users, 
   DollarSign, 
   User, 
   LogOut,
-  ExternalLink,
-  Sparkles
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTenant } from '../contexts/TenantContext';
 import { PWAInstallButton } from './PWAInstallButton';
+import { ClinicBrandLogo, CLINIC_OFFICIAL_DATA } from './ClinicBrandLogo';
 import { UserRole } from '../types';
 
 interface NavbarProps {
@@ -39,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     clinic_admin: { label: 'Admin Clínica', icon: <Building2 className="w-3.5 h-3.5 text-sky-600" />, color: 'bg-sky-50 text-sky-700 border-sky-200' },
     branch_admin: { label: 'Admin Filial', icon: <MapPin className="w-3.5 h-3.5 text-teal-600" />, color: 'bg-teal-50 text-teal-700 border-teal-200' },
     doctor: { label: 'Médico', icon: <Stethoscope className="w-3.5 h-3.5 text-blue-600" />, color: 'bg-blue-50 text-blue-700 border-blue-200' },
-    physiotherapist: { label: 'Fisioterapeuta', icon: <Activity className="w-3.5 h-3.5 text-emerald-600" />, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    physiotherapist: { label: 'Especialista Clínico', icon: <Stethoscope className="w-3.5 h-3.5 text-emerald-600" />, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     receptionist: { label: 'Recepção', icon: <Users className="w-3.5 h-3.5 text-amber-600" />, color: 'bg-amber-50 text-amber-700 border-amber-200' },
     financial: { label: 'Financeiro', icon: <DollarSign className="w-3.5 h-3.5 text-emerald-600" />, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     patient: { label: 'Paciente', icon: <User className="w-3.5 h-3.5 text-slate-600" />, color: 'bg-slate-100 text-slate-700 border-slate-200' },
@@ -47,13 +46,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const activeBranchName = activeBranchId === 'all'
     ? 'Todas as Filiais'
-    : branches.find(b => b.id === activeBranchId)?.name || 'Todas as Filiais';
+    : branches.find(b => b.id === activeBranchId)?.name || 'Unidade Matriz Cabo Frio';
 
   // Clinic team users (exclude patients and standalone super admins)
-  const clinicStaffUsers = usersList.filter(u => u.role !== 'patient');
+  const clinicStaffUsers = usersList.filter(u => u.role !== 'patient' && u.role !== 'physiotherapist');
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 print:hidden">
       
       {/* Impersonation Banner if Super Admin is supporting the clinic */}
       {isImpersonating && (
@@ -77,19 +76,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         
         {/* Zone 1: Clinic Brand Wordmark (White-Label) */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2.5 text-left">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-teal-500 text-white flex items-center justify-center shadow-xs">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 block leading-tight truncate max-w-[200px] sm:max-w-[320px]">
-                {clinic.tradeName || 'Instituto Dr. Newton Mureb'}
-              </span>
-              <span className="text-[10px] text-slate-500 font-medium block">
-                Painel Administrativo & Clínico · Multiunidades
-              </span>
-            </div>
-          </div>
+          <ClinicBrandLogo
+            variant="light"
+            layout="horizontal"
+            size="sm"
+            showSubtitle
+            subtitle={`${branches[0]?.city || CLINIC_OFFICIAL_DATA.city} - ${branches[0]?.state || CLINIC_OFFICIAL_DATA.state} · CNPJ ${clinic.documentNumber || CLINIC_OFFICIAL_DATA.cnpj}`}
+          />
         </div>
 
         {/* Zone 2: View Website Button if available */}

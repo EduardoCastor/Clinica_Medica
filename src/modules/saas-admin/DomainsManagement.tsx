@@ -315,7 +315,7 @@ export const DomainsManagement: React.FC<DomainsManagementProps> = ({ onSimulate
                   {/* Linked Clinic */}
                   <td className="py-3.5 px-4">
                     <span className="font-semibold text-slate-800 block">
-                      {dom.clinicName || 'Instituto Dr. Newton Mureb'}
+                      {dom.clinicName || 'NEWTON MUREB CLINICA MEDICA LTDA'}
                     </span>
                     <span className="text-[11px] text-slate-400 block font-mono">
                       Org: {dom.organizationId}

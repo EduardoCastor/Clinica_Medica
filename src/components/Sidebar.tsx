@@ -9,10 +9,10 @@ import {
   UserCog, 
   Building2, 
   Globe,
-  Clock,
-  Sparkles
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { ClinicBrandLogo, CLINIC_OFFICIAL_DATA } from './ClinicBrandLogo';
 
 export type ClinicTab = 
   | 'dashboard'
@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 shrink-0 hidden md:flex flex-col justify-between min-h-[calc(100vh-4rem)]">
+    <aside className="w-64 bg-white border-r border-slate-200 shrink-0 hidden md:flex flex-col justify-between min-h-[calc(100vh-4rem)] print:hidden">
       <div className="p-4 space-y-6">
         
         {/* Navigation Section */}
@@ -143,15 +143,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
           </nav>
         </div>
 
-        {/* Informative Helper Card */}
-        <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs text-slate-600 space-y-1.5">
-          <div className="flex items-center gap-1.5 font-bold text-slate-900">
-            <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-            <span>Multi-Tenant & Filiais</span>
+        {/* Official Clinic Identity Card */}
+        <div
+          className="p-3.5 rounded-2xl border border-[#D4AF37]/35 text-xs space-y-2.5 shadow-sm"
+          style={{
+            backgroundImage:
+              'linear-gradient(145deg, #1E2024 0%, #2A2D32 55%, #17191C 100%)',
+          }}
+        >
+          <ClinicBrandLogo variant="dark" layout="horizontal" size="sm" />
+          <div className="pt-2 border-t border-[#D4AF37]/20 text-[10px] text-slate-300 space-y-0.5 leading-snug">
+            <p className="font-semibold text-[#E5C158]">{CLINIC_OFFICIAL_DATA.crm}</p>
+            <p className="truncate">{CLINIC_OFFICIAL_DATA.specialty}</p>
+            <p className="text-slate-400">
+              {CLINIC_OFFICIAL_DATA.city} - {CLINIC_OFFICIAL_DATA.state} · CEP {CLINIC_OFFICIAL_DATA.cep}
+            </p>
           </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Estrutura com suporte ao Modelo A (exclusivo) e Modelo B (compartilhado entre filiais).
-          </p>
         </div>
       </div>
 

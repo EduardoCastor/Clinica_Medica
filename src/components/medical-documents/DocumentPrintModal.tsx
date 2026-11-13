@@ -3,20 +3,27 @@ import {
   X, 
   Printer, 
   ShieldCheck, 
-  FileText, 
-  Pill, 
-  AlertCircle, 
-  CheckCircle2, 
-  Building2,
   Lock
 } from 'lucide-react';
-import { Prescription, MedicalCertificate, LabOrder, Branch } from '../../types';
+import { 
+  Prescription, 
+  MedicalCertificate, 
+  LabOrder, 
+  MedicalRecordEntry, 
+  Branch 
+} from '../../types';
 import { useTenant } from '../../contexts/TenantContext';
+import { 
+  MedicalDocumentHeader, 
+  MedicalDocumentFooter, 
+  CLINIC_OFFICIAL_DATA 
+} from '../ClinicBrandLogo';
 
 export type PrintableDocumentType = 
   | { type: 'prescription'; data: Prescription }
   | { type: 'certificate'; data: MedicalCertificate }
-  | { type: 'lab_order'; data: LabOrder };
+  | { type: 'lab_order'; data: LabOrder }
+  | { type: 'medical_record'; data: MedicalRecordEntry; patientName?: string; patientCpf?: string };
 
 interface DocumentPrintModalProps {
   isOpen: boolean;
@@ -40,26 +47,26 @@ export const DocumentPrintModal: React.FC<DocumentPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto print:static print:bg-white print:p-0">
       
       {/* Screen Container */}
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-6 max-h-[90vh]">
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-6 max-h-[90vh] print:max-h-none print:shadow-none print:border-none print:my-0 print:rounded-none">
         
         {/* Modal Toolbar - Hidden during print */}
-        <div className="print:hidden bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+        <div className="print:hidden bg-[#1E2024] text-white px-6 py-4 flex items-center justify-between border-b border-[#D4AF37]/30">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-sky-500/20 text-sky-400 rounded-lg">
+            <div className="p-2 bg-[#D4AF37]/15 text-[#E5C158] rounded-lg border border-[#D4AF37]/30">
               <Printer className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <span>Visualização de Impressão Oficial</span>
-                <span className="text-[10px] font-normal px-2 py-0.5 bg-sky-800/80 text-sky-200 rounded-full border border-sky-600/40">
+                <span className="text-[10px] font-semibold px-2 py-0.5 bg-[#D4AF37]/20 text-[#E5C158] rounded border border-[#D4AF37]/40">
                   Padrão CFM & ANVISA
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Documento formatado para folha A4 com cabeçalho institucional e assinatura profissional
+                {CLINIC_OFFICIAL_DATA.legalName} · CNPJ {CLINIC_OFFICIAL_DATA.cnpj} · {CLINIC_OFFICIAL_DATA.crm}
               </p>
             </div>
           </div>
@@ -67,7 +74,7 @@ export const DocumentPrintModal: React.FC<DocumentPrintModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl shadow-xs transition flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-semibold text-[#1E2024] bg-[#E5C158] hover:bg-[#D4AF37] rounded-xl shadow-xs transition flex items-center gap-1.5"
             >
               <Printer className="w-4 h-4" />
               <span>Imprimir / Gerar PDF</span>
@@ -84,10 +91,8 @@ export const DocumentPrintModal: React.FC<DocumentPrintModalProps> = ({
         {/* Printable Canvas Area */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-slate-100 flex justify-center print:p-0 print:bg-white print:overflow-visible">
           
-          <div className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-md print:shadow-none print:p-8 flex flex-col justify-between border border-slate-200 print:border-none">
+          <div className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-8 sm:p-12 shadow-md print:shadow-none print:p-6 flex flex-col justify-between border border-slate-200 print:border-none">
             
-            {/* DOCUMENT CONTENT SWITCHER */}
-
             {/* 1. PRESCRIPTION */}
             {document.type === 'prescription' && (
               <PrescriptionCanvas 
@@ -115,6 +120,17 @@ export const DocumentPrintModal: React.FC<DocumentPrintModalProps> = ({
               />
             )}
 
+            {/* 4. MEDICAL RECORD (EVOLUÇÃO CLÍNICA) */}
+            {document.type === 'medical_record' && (
+              <MedicalRecordCanvas
+                record={document.data}
+                patientName={document.patientName}
+                patientCpf={document.patientCpf}
+                clinic={clinic}
+                branch={currentBranch}
+              />
+            )}
+
           </div>
 
         </div>
@@ -125,48 +141,27 @@ export const DocumentPrintModal: React.FC<DocumentPrintModalProps> = ({
   );
 };
 
-/* =========================================================================
-   SUB-CANVAS 1: RECEITUÁRIO (SIMPLES OU CONTROLE ESPECIAL ANVISA 344/98)
-   ========================================================================= */
-interface CanvasProps<T> {
-  clinic: any;
+interface CanvasProps {
+  clinic: unknown;
   branch?: Branch;
 }
 
-const PrescriptionCanvas: React.FC<{ prescription: Prescription } & CanvasProps<Prescription>> = ({
+/* =========================================================================
+   SUB-CANVAS 1: RECEITUÁRIO (SIMPLES OU CONTROLE ESPECIAL ANVISA 344/98)
+   ========================================================================= */
+const PrescriptionCanvas: React.FC<{ prescription: Prescription } & CanvasProps> = ({
   prescription,
-  clinic,
-  branch,
 }) => {
   const isSpecialControl = prescription.type === 'controle_especial';
 
   const renderSingleVia = (viaLabel: string, isRetencao: boolean) => (
     <div className={`space-y-6 ${isSpecialControl ? 'border-b-2 border-dashed border-slate-300 pb-10 mb-10' : ''}`}>
       
-      {/* Header */}
-      <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 uppercase">
-            {clinic?.legalName || 'Dr. Newton Mureb - Medicina Ortomolecular'}
-          </h1>
-          <p className="text-xs text-slate-600 mt-0.5">
-            {clinic?.institutionalBio?.substring(0, 85) || 'Metabologia, Longevidade Saudável e Modulação Celular'}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            {branch?.street || 'Alameda dos Jardins'}, {branch?.number || '1500'} - {branch?.neighborhood || 'Jardins'}, {branch?.city || 'São Paulo'}/{branch?.state || 'SP'} · Tel: {branch?.phone || '(11) 3284-9100'}
-          </p>
-        </div>
-        <div className="text-right">
-          <span className="inline-block px-3 py-1 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider rounded">
-            {isSpecialControl ? 'Controle Especial' : 'Receituário'}
-          </span>
-          {isSpecialControl && (
-            <span className="block text-[11px] font-bold text-rose-700 mt-1 uppercase">
-              {viaLabel}
-            </span>
-          )}
-        </div>
-      </div>
+      <MedicalDocumentHeader
+        badgeTitle={isSpecialControl ? 'Controle Especial' : 'Receituário Médico'}
+        badgeSubtitle={isSpecialControl ? viaLabel : 'Portaria ANVISA / CFM'}
+        badgeTone="gold"
+      />
 
       {/* Patient Strip */}
       <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
@@ -195,7 +190,7 @@ const PrescriptionCanvas: React.FC<{ prescription: Prescription } & CanvasProps<
 
         <div className="space-y-4 text-xs">
           {prescription.items.map((item, index) => (
-            <div key={item.id} className="pl-2 border-l-2 border-sky-600 space-y-1">
+            <div key={item.id} className="pl-3 border-l-2 border-[#9A7B2C] space-y-1">
               <div className="flex items-baseline justify-between font-bold text-slate-900 text-sm">
                 <span>{index + 1}. {item.medicineName} {item.concentration}</span>
                 <span className="text-xs font-semibold text-slate-600 font-mono">
@@ -264,35 +259,13 @@ const PrescriptionCanvas: React.FC<{ prescription: Prescription } & CanvasProps<
         </div>
       )}
 
-      {/* Footer Signature */}
-      <div className="pt-6 mt-6 border-t border-slate-200 flex items-end justify-between text-xs">
-        <div>
-          <p className="text-[11px] text-slate-500">
-            Data de Emissão: <strong className="text-slate-800">{new Date(prescription.prescriptionDate + 'T00:00:00').toLocaleDateString('pt-BR')}</strong>
-          </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            Validade da Receita: {prescription.validityDays} dias a contar da emissão
-          </p>
-          {prescription.signatureHash && (
-            <div className="mt-2 text-[10px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              <span>Assinatura Digital ICP-Brasil: {prescription.signatureHash}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="text-center w-64">
-          <div className="border-b border-slate-800 pb-1 mb-1 font-bold text-slate-900 text-sm">
-            {prescription.professionalName}
-          </div>
-          <span className="block text-xs font-semibold text-slate-700">
-            {prescription.professionalCouncil}
-          </span>
-          <span className="block text-[10px] text-slate-400">
-            Médico Responsável
-          </span>
-        </div>
-      </div>
+      <MedicalDocumentFooter
+        dateLabel="Data de Emissão"
+        dateValue={new Date(prescription.prescriptionDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+        extraLeftText={`Validade da Receita: ${prescription.validityDays} dias a contar da emissão`}
+        signatureHash={prescription.signatureHash}
+        roleSubtitle="Médico Responsável"
+      />
 
     </div>
   );
@@ -312,10 +285,8 @@ const PrescriptionCanvas: React.FC<{ prescription: Prescription } & CanvasProps<
 /* =========================================================================
    SUB-CANVAS 2: ATESTADO MÉDICO COM CONTROLE ESTATUTÁRIO DE CID-10 (CFM)
    ========================================================================= */
-const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasProps<MedicalCertificate>> = ({
+const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasProps> = ({
   certificate,
-  clinic,
-  branch,
 }) => {
   const getCertificateTitle = () => {
     switch (certificate.type) {
@@ -335,32 +306,15 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
   return (
     <div className="flex flex-col justify-between h-full min-h-[240mm] space-y-8">
       
-      {/* Header */}
-      <div className="flex items-start justify-between border-b-2 border-slate-800 pb-5">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 uppercase">
-            {clinic?.legalName || 'Dr. Newton Mureb - Medicina Ortomolecular'}
-          </h1>
-          <p className="text-xs text-slate-600 mt-0.5">
-            {clinic?.institutionalBio?.substring(0, 85) || 'Metabologia, Longevidade Saudável e Modulação Celular'}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            {branch?.street || 'Alameda dos Jardins'}, {branch?.number || '1500'} - {branch?.city || 'São Paulo'}/{branch?.state || 'SP'} · Tel: {branch?.phone || '(11) 3284-9100'}
-          </p>
-        </div>
-        <div className="text-right">
-          <span className="inline-block px-3 py-1 bg-slate-900 text-white text-xs font-bold uppercase tracking-wider rounded">
-            Documento Médico Oficial
-          </span>
-          <span className="block text-[10px] text-slate-400 mt-1">
-            Resoluções CFM nº 1.658/2002 e 1.819/2007
-          </span>
-        </div>
-      </div>
+      <MedicalDocumentHeader
+        badgeTitle="Documento Médico Oficial"
+        badgeSubtitle="Resoluções CFM nº 1.658/2002 e 1.819/2007"
+        badgeTone="gold"
+      />
 
       {/* Title */}
       <div className="text-center py-4">
-        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-wide border-b-2 border-slate-200 inline-block pb-1">
+        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-wide border-b-2 border-[#D4AF37]/60 inline-block pb-1">
           {getCertificateTitle()}
         </h2>
       </div>
@@ -368,7 +322,6 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
       {/* Formal Text Body */}
       <div className="space-y-6 text-sm text-slate-800 leading-relaxed font-serif px-4 sm:px-8">
         
-        {/* Afastamento */}
         {certificate.type === 'afastamento' && (
           <p className="indent-8 text-justify">
             Atesto, para os devidos fins legais, periciais ou trabalhistas, que o(a) Sr.(a) <strong>{certificate.patientName}</strong>, 
@@ -379,7 +332,6 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
           </p>
         )}
 
-        {/* Comparecimento */}
         {certificate.type === 'comparecimento' && (
           <p className="indent-8 text-justify">
             Declaro, para os devidos fins de comprovação, que o(a) Sr.(a) <strong>{certificate.patientName}</strong>, 
@@ -388,16 +340,14 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
           </p>
         )}
 
-        {/* Aptidão Física */}
         {certificate.type === 'aptidao_fisica' && (
           <p className="indent-8 text-justify">
             Atesto que o(a) paciente <strong>{certificate.patientName}</strong>, portador(a) do CPF nº <strong>{certificate.patientCpf}</strong>, 
-            foi submetido(a) a minuciosa avaliação clínica e cardiovascular nesta data, encontrando-se apto(a) para a realização de: 
+            foi submetido(a) a avaliação clínica e metabólica nesta data, encontrando-se apto(a) para a realização de: 
             <strong> {certificate.activityPermitted || 'atividades físicas supervisionadas, musculação e exercícios resistidos funcionais'}</strong>.
           </p>
         )}
 
-        {/* Acompanhante */}
         {certificate.type === 'acompanhante' && (
           <p className="indent-8 text-justify">
             Atesto que o(a) Sr.(a) <strong>{certificate.companionName || 'Acompanhante Legal'}</strong> esteve nesta unidade de saúde 
@@ -406,7 +356,6 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
           </p>
         )}
 
-        {/* Period description or details */}
         {certificate.periodDescription && (
           <p className="indent-8 text-justify text-slate-700">
             {certificate.periodDescription}
@@ -428,7 +377,6 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
               </p>
             )}
 
-            {/* Termo Obrigatório de Consentimento Expresso do Paciente */}
             <div className="mt-3 pt-3 border-t border-slate-200 text-[11px] text-slate-700 space-y-3">
               <p className="text-justify font-sans">
                 <strong>Termo de Autorização Expressa do Paciente (Resolução CFM nº 1.658/2002 e CFM nº 1.819/2007):</strong><br />
@@ -453,31 +401,14 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
 
       </div>
 
-      {/* City Date and Doctor Signature */}
-      <div className="pt-10 border-t border-slate-200 flex items-end justify-between text-xs px-4 sm:px-8">
-        <div>
-          <p className="text-xs text-slate-700">
-            {branch?.city || 'São Paulo'}, {new Date(certificate.issueDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-          </p>
-          {certificate.signatureHash && (
-            <div className="mt-2 text-[10px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1 font-sans">
-              <Lock className="w-3 h-3 text-emerald-600" />
-              <span>Assinado Digitalmente: {certificate.signatureHash}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="text-center w-64">
-          <div className="border-b border-slate-800 pb-1 mb-1 font-bold text-slate-900 text-sm font-sans">
-            {certificate.professionalName}
-          </div>
-          <span className="block text-xs font-semibold text-slate-700 font-sans">
-            {certificate.professionalCouncil}
-          </span>
-          <span className="block text-[10px] text-slate-400 font-sans">
-            Carimbo e Assinatura Médica
-          </span>
-        </div>
+      <div className="px-4 sm:px-8">
+        <MedicalDocumentFooter
+          dateLabel="Emissão"
+          dateValue={new Date(certificate.issueDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+          signatureHash={certificate.signatureHash}
+          useLockIcon
+          roleSubtitle="Carimbo e Assinatura Médica"
+        />
       </div>
 
     </div>
@@ -487,36 +418,17 @@ const CertificateCanvas: React.FC<{ certificate: MedicalCertificate } & CanvasPr
 /* =========================================================================
    SUB-CANVAS 3: PEDIDO DE EXAMES (COM JUSTIFICATIVA CLÍNICA PARA CONVÊNIOS)
    ========================================================================= */
-const LabOrderCanvas: React.FC<{ order: LabOrder } & CanvasProps<LabOrder>> = ({
+const LabOrderCanvas: React.FC<{ order: LabOrder } & CanvasProps> = ({
   order,
-  clinic,
-  branch,
 }) => {
   return (
     <div className="flex flex-col justify-between h-full min-h-[240mm] space-y-6">
       
-      {/* Header */}
-      <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 uppercase">
-            {clinic?.legalName || 'Dr. Newton Mureb - Medicina Ortomolecular'}
-          </h1>
-          <p className="text-xs text-slate-600 mt-0.5">
-            {clinic?.institutionalBio?.substring(0, 85) || 'Metabologia, Longevidade Saudável e Modulação Celular'}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            {branch?.street || 'Alameda dos Jardins'}, {branch?.number || '1500'} - {branch?.city || 'São Paulo'}/{branch?.state || 'SP'} · Tel: {branch?.phone || '(11) 3284-9100'}
-          </p>
-        </div>
-        <div className="text-right">
-          <span className="inline-block px-3 py-1 bg-sky-700 text-white text-xs font-bold uppercase tracking-wider rounded">
-            Solicitação de Exames
-          </span>
-          <span className="block text-[10px] text-slate-400 mt-1">
-            Laboratoriais & Diagnósticos por Imagem
-          </span>
-        </div>
-      </div>
+      <MedicalDocumentHeader
+        badgeTitle="Solicitação de Exames"
+        badgeSubtitle="Laboratoriais & Diagnósticos por Imagem"
+        badgeTone="gold"
+      />
 
       {/* Patient Strip */}
       <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs grid grid-cols-2 gap-2">
@@ -530,7 +442,7 @@ const LabOrderCanvas: React.FC<{ order: LabOrder } & CanvasProps<LabOrder>> = ({
         </div>
       </div>
 
-      {/* Justificativa Clínica (Item crítico para autorização de convênios médicos e auditorias) */}
+      {/* Justificativa Clínica */}
       <div className="p-3 bg-sky-50/60 rounded-lg border border-sky-200 text-xs space-y-1">
         <span className="font-bold text-sky-900 block uppercase text-[10px] tracking-wider">
           Indicação / Justificativa Clínica (Exigência CFM & ANS):
@@ -578,33 +490,158 @@ const LabOrderCanvas: React.FC<{ order: LabOrder } & CanvasProps<LabOrder>> = ({
         </div>
       )}
 
-      {/* Footer */}
-      <div className="pt-6 border-t border-slate-200 flex items-end justify-between text-xs">
-        <div>
-          <p className="text-[11px] text-slate-500">
-            Data de Solicitação: <strong className="text-slate-800">{new Date(order.orderDate + 'T00:00:00').toLocaleDateString('pt-BR')}</strong>
-          </p>
-          {order.signatureHash && (
-            <div className="mt-2 text-[10px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              <span>Assinatura Digital: {order.signatureHash}</span>
-            </div>
-          )}
-        </div>
+      <MedicalDocumentFooter
+        dateLabel="Data de Solicitação"
+        dateValue={new Date(order.orderDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+        signatureHash={order.signatureHash}
+        roleSubtitle="Médico Solicitante"
+      />
 
-        <div className="text-center w-64">
-          <div className="border-b border-slate-800 pb-1 mb-1 font-bold text-slate-900 text-sm">
-            {order.professionalName}
-          </div>
-          <span className="block text-xs font-semibold text-slate-700">
-            {order.professionalCouncil}
-          </span>
-          <span className="block text-[10px] text-slate-400">
-            Médico Solicitante
+    </div>
+  );
+};
+
+/* =========================================================================
+   SUB-CANVAS 4: EVOLUÇÃO CLÍNICA / RELATÓRIO DE PRONTUÁRIO (PEP CFM)
+   ========================================================================= */
+const MedicalRecordCanvas: React.FC<{
+  record: MedicalRecordEntry;
+  patientName?: string;
+  patientCpf?: string;
+} & CanvasProps> = ({ record, patientName, patientCpf }) => {
+  return (
+    <div className="flex flex-col justify-between h-full min-h-[240mm] space-y-6">
+      <MedicalDocumentHeader
+        badgeTitle="Evolução Clínica (PEP)"
+        badgeSubtitle="Resoluções CFM nº 1.638/2002 e 1.821/2007"
+        badgeTone="gold"
+      />
+
+      {/* Patient & Attendance Strip */}
+      <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div>
+          <span className="text-[10px] uppercase font-bold text-slate-400 block">Paciente:</span>
+          <span className="font-bold text-slate-900 text-sm">{patientName || 'Paciente Registrado no PEP'}</span>
+        </div>
+        <div>
+          <span className="text-[10px] uppercase font-bold text-slate-400 block">CPF:</span>
+          <span className="font-mono text-slate-800">{patientCpf || 'Conforme Prontuário'}</span>
+        </div>
+        <div>
+          <span className="text-[10px] uppercase font-bold text-slate-400 block">Data/Hora Atendimento:</span>
+          <span className="font-semibold text-slate-800">
+            {new Date(record.recordDate).toLocaleString('pt-BR')}
           </span>
         </div>
       </div>
 
+      {/* Vital Signs */}
+      {record.vitalSigns && (
+        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs flex flex-wrap gap-4">
+          <span className="font-bold text-slate-800 uppercase text-[10px] tracking-wider w-full border-b border-slate-200 pb-1">
+            Sinais Vitais & Antropometria
+          </span>
+          {record.vitalSigns.bloodPressureSystolic && (
+            <span><strong>PA:</strong> {record.vitalSigns.bloodPressureSystolic}/{record.vitalSigns.bloodPressureDiastolic} mmHg</span>
+          )}
+          {record.vitalSigns.heartRateBpm && (
+            <span><strong>FC:</strong> {record.vitalSigns.heartRateBpm} bpm</span>
+          )}
+          {record.vitalSigns.temperatureCelsius && (
+            <span><strong>Temp:</strong> {record.vitalSigns.temperatureCelsius} °C</span>
+          )}
+          {record.vitalSigns.oxygenSaturationPercent && (
+            <span><strong>SpO2:</strong> {record.vitalSigns.oxygenSaturationPercent}%</span>
+          )}
+          {record.vitalSigns.weightKg && (
+            <span><strong>Peso:</strong> {record.vitalSigns.weightKg} kg</span>
+          )}
+          {record.vitalSigns.heightCm && (
+            <span><strong>Altura:</strong> {record.vitalSigns.heightCm} cm</span>
+          )}
+          {record.vitalSigns.bmi && (
+            <span><strong>IMC:</strong> {record.vitalSigns.bmi} kg/m²</span>
+          )}
+        </div>
+      )}
+
+      {/* SOAP Sections */}
+      <div className="space-y-4 flex-1 text-xs">
+        <div className="p-3.5 rounded-lg border border-slate-200 space-y-1">
+          <span className="font-bold text-slate-900 uppercase text-[10px] tracking-wider block">
+            S — Subjetivo / Queixa Principal e Anamnese
+          </span>
+          <p className="text-slate-800 whitespace-pre-line leading-relaxed">{record.chiefComplaint}</p>
+          {record.clinicalHistory && (
+            <p className="text-slate-600 whitespace-pre-line leading-relaxed pt-1 border-t border-slate-100">
+              {record.clinicalHistory}
+            </p>
+          )}
+        </div>
+
+        {record.physicalExam && (
+          <div className="p-3.5 rounded-lg border border-slate-200 space-y-1">
+            <span className="font-bold text-slate-900 uppercase text-[10px] tracking-wider block">
+              O — Exame Físico e Achados Objetivos
+            </span>
+            <p className="text-slate-700 whitespace-pre-line leading-relaxed">{record.physicalExam}</p>
+          </div>
+        )}
+
+        <div className="p-3.5 rounded-lg border border-slate-200 space-y-1.5">
+          <span className="font-bold text-slate-900 uppercase text-[10px] tracking-wider block">
+            A — Avaliação Clínica e Hipóteses Diagnósticas
+          </span>
+          <p className="text-slate-800 leading-relaxed">{record.diagnosticHypothesis || 'Avaliação médica ambulatorial.'}</p>
+          {record.cid10Codes && record.cid10Codes.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {record.cid10Codes.map((cid) => (
+                <span key={cid.code} className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-[11px] font-mono">
+                  <strong>{cid.code}</strong> · {cid.description}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-3.5 rounded-lg border border-slate-200 space-y-1.5">
+          <span className="font-bold text-slate-900 uppercase text-[10px] tracking-wider block">
+            P — Plano Terapêutico e Condutas
+          </span>
+          <p className="text-slate-800 whitespace-pre-line leading-relaxed">{record.therapeuticPlan}</p>
+          {record.evolutionNotes && (
+            <p className="text-slate-600 italic pt-1 border-t border-slate-100">
+              {record.evolutionNotes}
+            </p>
+          )}
+        </div>
+
+        {record.addendums && record.addendums.length > 0 && (
+          <div className="p-3.5 rounded-lg border border-amber-300 bg-amber-50/40 space-y-2">
+            <span className="font-bold text-amber-900 uppercase text-[10px] tracking-wider flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              Adendos / Erratas (CFM nº 1.821/2007)
+            </span>
+            {record.addendums.map((ad) => (
+              <div key={ad.id} className="text-[11px] text-slate-800 border-t border-amber-200 pt-1.5">
+                <p className="font-semibold">
+                  {ad.authorName} ({CLINIC_OFFICIAL_DATA.crm}) · {new Date(ad.createdAt).toLocaleString('pt-BR')}
+                </p>
+                <p className="italic mt-0.5">{ad.note}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <MedicalDocumentFooter
+        dateLabel="Data/Hora do Registro"
+        dateValue={new Date(record.signedAt || record.recordDate).toLocaleString('pt-BR')}
+        extraLeftText={record.isSigned ? 'Prontuário Eletrônico Selado (Imutável CFM nº 1.821/2007)' : 'Registro em Elaboração'}
+        signatureHash={record.signatureHash}
+        useLockIcon
+        roleSubtitle="Médico Assistente"
+      />
     </div>
   );
 };

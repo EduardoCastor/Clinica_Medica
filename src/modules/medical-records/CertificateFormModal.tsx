@@ -60,7 +60,7 @@ export const CertificateFormModal: React.FC<CertificateFormModalProps> = ({
       patientSocialName: patient.socialName,
       professionalId: currentUser.id,
       professionalName: currentUser.fullName,
-      professionalCouncil: 'CRM 84.320/SP · RQE 41.200',
+      professionalCouncil: 'CRM/RJ 52-444985',
       type,
       issueDate: new Date().toISOString().split('T')[0],
       startDate,
@@ -349,7 +349,7 @@ export const CertificateFormModal: React.FC<CertificateFormModalProps> = ({
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-xs text-emerald-900">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Assinatura Digital: <strong>{currentUser.fullName} (CRM 84.320/SP)</strong></span>
+              <span>Assinatura Digital: <strong>Dr. Newton Mureb (CRM/RJ 52-444985)</strong></span>
             </div>
             <span className="text-[11px] font-mono text-emerald-700">Data: {new Date().toLocaleDateString('pt-BR')}</span>
           </div>

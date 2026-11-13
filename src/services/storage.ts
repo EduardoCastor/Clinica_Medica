@@ -82,10 +82,115 @@ const STORAGE_KEYS = {
   CLINIC_DOMAINS: 'medsync_clinic_domains',
   ACTIVE_BRANCH_ID: 'medsync_active_branch',
   ACTIVE_USER_ID: 'medsync_active_user',
+  DATA_VERSION: 'medsync_data_version',
 };
+
+export const MEDSYNC_DATA_VERSION = '2026.11.13-newton-mureb';
+
+let migrationChecked = false;
+
+export function runDataMigrationIfNeeded(): void {
+  if (typeof window === 'undefined' || migrationChecked) return;
+  migrationChecked = true;
+
+  try {
+    const currentVersion = localStorage.getItem(STORAGE_KEYS.DATA_VERSION);
+    const rawClinic = localStorage.getItem(STORAGE_KEYS.CLINIC);
+    const rawProfessionals = localStorage.getItem(STORAGE_KEYS.PROFESSIONALS);
+    const rawBranches = localStorage.getItem(STORAGE_KEYS.BRANCHES);
+
+    const hasLegacyClinic =
+      Boolean(rawClinic) &&
+      (rawClinic!.includes('42.891.304') ||
+        rawClinic!.includes('00.000.000') ||
+        rawClinic!.includes('Mureb & Associados'));
+
+    const hasLegacyProfessional =
+      Boolean(rawProfessionals) &&
+      (rawProfessionals!.includes('Rodrigo Viana') ||
+        rawProfessionals!.includes('prof_rodrigo') ||
+        rawProfessionals!.includes('84.320/SP'));
+
+    const hasLegacyBranches =
+      Boolean(rawBranches) &&
+      (rawBranches!.includes('branch_sp_jardins') ||
+        rawBranches!.includes('branch_rj_ipanema') ||
+        rawBranches!.includes('Bela Cintra'));
+
+    const needsMigration =
+      currentVersion !== MEDSYNC_DATA_VERSION ||
+      hasLegacyClinic ||
+      hasLegacyProfessional ||
+      hasLegacyBranches;
+
+    if (!needsMigration) return;
+
+    // Upgrade core clinic, org, branches, rooms, specialties, professionals, services, users, website, domains
+    localStorage.setItem(STORAGE_KEYS.ORGANIZATION, JSON.stringify(INITIAL_ORGANIZATION));
+    localStorage.setItem(STORAGE_KEYS.CLINIC, JSON.stringify(INITIAL_CLINIC));
+    localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(INITIAL_BRANCHES));
+    localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(INITIAL_ROOMS));
+    localStorage.setItem(STORAGE_KEYS.SPECIALTIES, JSON.stringify(INITIAL_SPECIALTIES));
+    localStorage.setItem(STORAGE_KEYS.PROFESSIONALS, JSON.stringify(INITIAL_PROFESSIONALS));
+    localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(INITIAL_SERVICES));
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
+    localStorage.setItem(STORAGE_KEYS.WEBSITE, JSON.stringify(INITIAL_WEBSITE));
+    localStorage.setItem(STORAGE_KEYS.CLINIC_DOMAINS, JSON.stringify(INITIAL_CLINIC_DOMAINS));
+
+    // Migrate patients (preserve custom added patients while remapping old SP/RJ branchIds to Cabo Frio)
+    const rawPatients = localStorage.getItem(STORAGE_KEYS.PATIENTS);
+    if (rawPatients) {
+      try {
+        const parsedPatients = JSON.parse(rawPatients) as Patient[];
+        const migratedPatients = parsedPatients.map((p) => {
+          const isOldBranch =
+            p.originBranchId === 'branch_sp_jardins' || p.originBranchId === 'branch_rj_ipanema';
+          return {
+            ...p,
+            originBranchId: isOldBranch ? 'branch_cf_centro' : p.originBranchId,
+            authorizedBranchIds: ['branch_cf_centro'],
+          };
+        });
+        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(migratedPatients));
+      } catch {
+        localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(INITIAL_PATIENTS));
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(INITIAL_PATIENTS));
+    }
+
+    // Reset/update sample appointments, records, prescriptions, certificates, lab orders, exams, financial & messages containing legacy doctors/CRM
+    localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(INITIAL_APPOINTMENTS));
+    localStorage.setItem(STORAGE_KEYS.WAITLIST, JSON.stringify(INITIAL_WAITLIST));
+    localStorage.setItem(STORAGE_KEYS.MEDICAL_RECORDS, JSON.stringify(INITIAL_MEDICAL_RECORDS));
+    localStorage.setItem(STORAGE_KEYS.PRESCRIPTIONS, JSON.stringify(INITIAL_PRESCRIPTIONS));
+    localStorage.setItem(STORAGE_KEYS.CERTIFICATES, JSON.stringify(INITIAL_CERTIFICATES));
+    localStorage.setItem(STORAGE_KEYS.LAB_ORDERS, JSON.stringify(INITIAL_LAB_ORDERS));
+    localStorage.setItem(STORAGE_KEYS.EXAM_RESULTS, JSON.stringify(INITIAL_EXAM_RESULTS));
+    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(INITIAL_MESSAGES));
+    localStorage.setItem(STORAGE_KEYS.FINANCIAL, JSON.stringify(INITIAL_FINANCIAL));
+    localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(INITIAL_AUDIT_LOGS));
+
+    // Fix active branch/user if pointing to removed IDs
+    const activeBranch = localStorage.getItem(STORAGE_KEYS.ACTIVE_BRANCH_ID);
+    if (activeBranch === 'branch_sp_jardins' || activeBranch === 'branch_rj_ipanema') {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_BRANCH_ID, 'branch_cf_centro');
+    }
+    const activeUser = localStorage.getItem(STORAGE_KEYS.ACTIVE_USER_ID);
+    if (activeUser === 'usr_physio_rodrigo') {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_USER_ID, 'usr_doctor_newton');
+    }
+
+    localStorage.setItem(STORAGE_KEYS.DATA_VERSION, MEDSYNC_DATA_VERSION);
+  } catch (err) {
+    console.warn('Erro ao migrar cache local MedSync:', err);
+  }
+}
 
 function getStored<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
+  runDataMigrationIfNeeded();
   try {
     const data = localStorage.getItem(key);
     if (!data) {
@@ -848,7 +953,10 @@ export const StorageService = {
   addAuditLog: (entry: { action: string; entity: string; entityId?: string; details: string }): void => {
     const currentUsers = StorageService.getUsers();
     const activeUserId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ACTIVE_USER_ID) : null;
-    const currentUser = currentUsers.find(u => u.id === activeUserId) || currentUsers[2]; // Default Dr. Newton
+    const currentUser =
+      currentUsers.find(u => u.id === activeUserId) ||
+      currentUsers.find(u => u.id === 'usr_doctor_newton') ||
+      currentUsers[0]; // Default Dr. Newton Mureb
 
     const log: AuditLog = {
       id: `aud_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -871,6 +979,7 @@ export const StorageService = {
   // Active Branch Preference
   getActiveBranchId: (): string => {
     if (typeof window === 'undefined') return 'all';
+    runDataMigrationIfNeeded();
     return localStorage.getItem(STORAGE_KEYS.ACTIVE_BRANCH_ID) || 'all';
   },
   setActiveBranchId: (id: string): void => {
@@ -882,6 +991,7 @@ export const StorageService = {
   // Active User / Role Switcher for Testing
   getActiveUserId: (): string => {
     if (typeof window === 'undefined') return 'usr_doctor_newton';
+    runDataMigrationIfNeeded();
     return localStorage.getItem(STORAGE_KEYS.ACTIVE_USER_ID) || 'usr_doctor_newton';
   },
   setActiveUserId: (id: string): void => {

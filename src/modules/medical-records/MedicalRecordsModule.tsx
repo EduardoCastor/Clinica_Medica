@@ -220,7 +220,7 @@ export const MedicalRecordsModule: React.FC<MedicalRecordsModuleProps> = ({ init
       branchId: activeBranchId === 'all' ? branches[0].id : activeBranchId,
       professionalId: currentUser.id,
       professionalName: currentUser.fullName,
-      professionalCouncilNumber: 'CRM 84.320/SP',
+      professionalCouncilNumber: 'CRM/RJ 52-444985',
       recordDate: new Date().toISOString(),
       status: statusToSave,
       consultationType,
@@ -848,6 +848,22 @@ export const MedicalRecordsModule: React.FC<MedicalRecordsModuleProps> = ({ init
                         <span>Adicionar Adendo / Errata</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() =>
+                        setPrintableDoc({
+                          type: 'medical_record',
+                          data: rec,
+                          patientName: selectedPatient.fullName,
+                          patientCpf: selectedPatient.documentCpf,
+                        })
+                      }
+                      className="px-3 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition flex items-center gap-1.5"
+                      title="Imprimir Evolução Clínica em papel timbrado oficial"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Imprimir / PDF</span>
+                    </button>
                   </div>
                 </div>
 

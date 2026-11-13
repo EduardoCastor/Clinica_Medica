@@ -37,7 +37,7 @@ export const AddendumModal: React.FC<AddendumModalProps> = ({
       recordId: record.id,
       authorId: currentUser.id,
       authorName: currentUser.fullName,
-      authorCouncilNumber: 'CRM 84.320/SP',
+      authorCouncilNumber: 'CRM/RJ 52-444985',
       note: note.trim(),
       createdAt: new Date().toISOString(),
       signatureHash: `sha256_addendum_${Math.random().toString(36).substring(2, 10)}`,
@@ -127,7 +127,7 @@ export const AddendumModal: React.FC<AddendumModalProps> = ({
               Assinante: <strong>{currentUser.fullName}</strong>
             </span>
             <span className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-emerald-200">
-              CRM 84.320/SP
+              CRM/RJ 52-444985
             </span>
           </div>
 

@@ -169,7 +169,7 @@ export const PatientPortal: React.FC = () => {
 
                   {rec.prescriptions && (
                     <div>
-                      <span className="font-bold text-slate-800 block mb-1">Prescrições e Formulações Ortomoleculares:</span>
+                      <span className="font-bold text-slate-800 block mb-1">Prescrições Médicas e Condutas:</span>
                       <pre className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-800 whitespace-pre-line leading-relaxed">
                         {rec.prescriptions}
                       </pre>

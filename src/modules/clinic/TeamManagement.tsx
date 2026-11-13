@@ -79,7 +79,7 @@ export const TeamManagement: React.FC = () => {
             Equipe Clínica & Gestão de Acessos (RBAC)
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Controle de profissionais de saúde, conselhos de classe (CRM, CREFITO), especialidades e usuários do sistema.
+            Controle de profissionais médicos, registro no conselho (CRM/CREMERJ), especialidades e usuários do sistema.
           </p>
         </div>
 
@@ -192,7 +192,7 @@ export const TeamManagement: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Dra. Mariana Vasconcelos"
+                  placeholder="Ex: Dr. Newton Mureb"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -205,7 +205,7 @@ export const TeamManagement: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="CRM 12345/SP ou CREFITO"
+                    placeholder="CRM/RJ 52-444985"
                     value={councilNumber}
                     onChange={(e) => setCouncilNumber(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
@@ -230,7 +230,7 @@ export const TeamManagement: React.FC = () => {
                   <label className="block font-semibold text-slate-700 mb-1">Telefone Celular</label>
                   <input
                     type="text"
-                    placeholder="(11) 98765-4321"
+                    placeholder="(22) 9908-9122"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -240,7 +240,7 @@ export const TeamManagement: React.FC = () => {
                   <label className="block font-semibold text-slate-700 mb-1">E-mail Profissional</label>
                   <input
                     type="email"
-                    placeholder="mariana@drnewtonmureb.com.br"
+                    placeholder="roseneco1@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"

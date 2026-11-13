@@ -191,7 +191,7 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({ onOpenPreview }) =
           </div>
 
           <div className="text-xs">
-            <label className="block font-semibold text-slate-700 mb-1">Apresentação da Clínica & Filosofia Ortomolecular</label>
+            <label className="block font-semibold text-slate-700 mb-1">Apresentação da Clínica & Filosofia Médica</label>
             <textarea
               rows={3}
               value={config.aboutText}

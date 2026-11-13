@@ -53,7 +53,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const currentUser = usersList.find(u => u.id === activeUserId) || usersList[2]; // Default Dr. Newton
+  const currentUser =
+    usersList.find(u => u.id === activeUserId) ||
+    usersList.find(u => u.id === 'usr_doctor_newton') ||
+    usersList[0]; // Default Dr. Newton Mureb
   const currentRole = currentUser.role;
 
   const switchUser = (userId: string) => {

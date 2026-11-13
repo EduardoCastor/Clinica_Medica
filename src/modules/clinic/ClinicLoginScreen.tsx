@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   Building2, 
   Stethoscope, 
-  Activity, 
   Users, 
   DollarSign, 
   ShieldCheck, 
@@ -10,11 +9,11 @@ import {
   Lock, 
   Mail, 
   KeyRound,
-  CheckCircle2,
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
+import { ClinicBrandLogo, CLINIC_OFFICIAL_DATA } from '../../components/ClinicBrandLogo';
 
 interface ClinicLoginScreenProps {
   onSuccess?: () => void;
@@ -28,7 +27,9 @@ export const ClinicLoginScreen: React.FC<ClinicLoginScreenProps> = ({ onSuccess 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Clinic staff users
-  const staffUsers = usersList.filter(u => u.role !== 'super_admin' && u.role !== 'patient');
+  const staffUsers = usersList.filter(
+    u => u.role !== 'super_admin' && u.role !== 'patient' && u.role !== 'physiotherapist'
+  );
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,24 +56,38 @@ export const ClinicLoginScreen: React.FC<ClinicLoginScreenProps> = ({ onSuccess 
         {/* White-Label Card */}
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden">
           
-          {/* Header with Clinic Branding */}
-          <div className="p-8 pb-6 bg-gradient-to-b from-sky-50/70 to-white border-b border-slate-100 text-center space-y-3">
-            <div className="inline-flex p-3.5 bg-gradient-to-tr from-sky-600 to-teal-600 text-white rounded-2xl shadow-md">
-              <Activity className="w-8 h-8" />
+          {/* Header with Clinic Branding (Dark Marbled & Gold) */}
+          <div
+            className="p-8 pb-6 border-b border-[#D4AF37]/30 text-center space-y-4 text-white"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06) 0%, transparent 55%), radial-gradient(circle at 80% 80%, rgba(212,175,55,0.12) 0%, transparent 50%), linear-gradient(145deg, #1E2024 0%, #2A2D32 55%, #17191C 100%)',
+            }}
+          >
+            <div className="flex justify-center">
+              <ClinicBrandLogo
+                variant="dark"
+                size="lg"
+                showSubtitle
+                subtitle={CLINIC_OFFICIAL_DATA.specialty}
+              />
             </div>
-            
+
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                {clinic.tradeName || 'Instituto Dr. Newton Mureb'}
+              <h1 className="text-sm font-bold text-[#E5C158] tracking-wide uppercase">
+                {clinic.legalName || CLINIC_OFFICIAL_DATA.legalName}
               </h1>
-              <p className="text-xs text-slate-500 mt-1">
-                Portal Administrativo & Clínico · Sistema de Gestão Interna
+              <p className="text-[11px] text-slate-300 mt-1">
+                CNPJ: {clinic.documentNumber || CLINIC_OFFICIAL_DATA.cnpj} · {CLINIC_OFFICIAL_DATA.crm}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {CLINIC_OFFICIAL_DATA.street}, {CLINIC_OFFICIAL_DATA.number}, {CLINIC_OFFICIAL_DATA.complement} · {CLINIC_OFFICIAL_DATA.city} - {CLINIC_OFFICIAL_DATA.state}
               </p>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100/80 text-sky-800 text-[11px] font-semibold border border-sky-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
-              <span>Ambiente Exclusivo da Clínica · Multi-Tenant</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-[#E5C158] text-[11px] font-semibold border border-[#D4AF37]/30">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#E5C158]" />
+              <span>Portal Administrativo & Clínico · Acesso Restrito</span>
             </div>
           </div>
 
@@ -93,7 +108,7 @@ export const ClinicLoginScreen: React.FC<ClinicLoginScreenProps> = ({ onSuccess 
                   <input
                     type="email"
                     required
-                    placeholder="dr.newton@drnewtonmureb.com.br"
+                    placeholder={CLINIC_OFFICIAL_DATA.email}
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     className="w-full pl-10 pr-3 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -137,8 +152,7 @@ export const ClinicLoginScreen: React.FC<ClinicLoginScreenProps> = ({ onSuccess 
                 {staffUsers.map((u) => {
                   const roleBadge = 
                     u.role === 'clinic_admin' ? { label: 'Admin Clínica', icon: <Building2 className="w-3 h-3 text-sky-600" /> } :
-                    u.role === 'doctor' ? { label: 'Médico', icon: <Stethoscope className="w-3 h-3 text-blue-600" /> } :
-                    u.role === 'physiotherapist' ? { label: 'Fisioterapeuta', icon: <Activity className="w-3 h-3 text-emerald-600" /> } :
+                    u.role === 'doctor' ? { label: 'Médico · CRM/RJ', icon: <Stethoscope className="w-3 h-3 text-blue-600" /> } :
                     u.role === 'receptionist' ? { label: 'Recepção', icon: <Users className="w-3 h-3 text-amber-600" /> } :
                     { label: 'Financeiro', icon: <DollarSign className="w-3 h-3 text-emerald-600" /> };
 

@@ -1,6 +1,7 @@
 -- ====================================================================
--- CARGA INICIAL DE DEMONSTRAÇÃO (SEED): CLÍNICA DR. NEWTON MUREB
--- Medicina Ortomolecular, Saúde Metabólica, Lipedema e Fisioterapia
+-- CARGA INICIAL OFICIAL: NEWTON MUREB CLINICA MEDICA LTDA (CABO FRIO - RJ)
+-- Dr. Newton Mureb - CRM/RJ 52-444985 (CREMERJ 444985)
+-- Clínica Médica, Endocrinologia e Metabologia
 -- ====================================================================
 
 -- 1. Inserir Planos Comerciais
@@ -15,37 +16,35 @@ ON CONFLICT (code) DO NOTHING;
 INSERT INTO public.organizations (id, name, slug, plan_id, status, trial_ends_at)
 VALUES (
     'a0000000-0000-0000-0000-000000000001',
-    'Instituto Dr. Newton Mureb',
+    'NEWTON MUREB CLINICA MEDICA',
     'dr-newton-mureb',
     'd3333333-3333-3333-3333-333333333333',
     'active',
     now() + interval '10 days'
 ) ON CONFLICT (slug) DO NOTHING;
 
--- 3. Clínica
+-- 3. Clínica (Dados Oficiais Cartão CNPJ 55.937.470/0001-78)
 INSERT INTO public.clinics (id, organization_id, legal_name, trade_name, document_number, email, phone, whatsapp, institutional_bio)
 VALUES (
     'b0000000-0000-0000-0000-000000000001',
     'a0000000-0000-0000-0000-000000000001',
-    'Mureb & Associados Medicina Integrada Ltda',
-    'Clínica Dr. Newton Mureb - Medicina Ortomolecular & Saúde Metabólica',
-    '42.891.304/0001-92',
-    'contato@drnewtonmureb.com.br',
-    '(11) 3284-9100',
-    '(11) 98765-4321',
-    'Referência em medicina ortomolecular e saúde celular metabólica. Identificação e correção de desequilíbrios bioquímicos, manejo de lipedema e prevenção de sarcopenia.'
+    'NEWTON MUREB CLINICA MEDICA LTDA',
+    'NEWTON MUREB CLINICA MEDICA',
+    '55.937.470/0001-78',
+    'roseneco1@gmail.com',
+    '(22) 9908-9122',
+    '(22) 99908-9122',
+    'Com mais de 40 anos de experiência médica, dediquei minha vida à busca incansável pela saúde, bem-estar e longevidade dos meus pacientes. Nossa missão é compreender, confortar e tratar não apenas sintomas, mas as causas subjacentes, com acompanhamento semanal individualizado e assessoria próxima.'
 ) ON CONFLICT DO NOTHING;
 
--- 4. Filiais (Matriz SP Jardins e Filial RJ Ipanema)
-INSERT INTO public.branches (id, organization_id, clinic_id, name, code, is_headquarters, phone, email, street, number, neighborhood, city, state, patient_sharing_mode)
+-- 4. Unidade Matriz Cabo Frio
+INSERT INTO public.branches (id, organization_id, clinic_id, name, code, is_headquarters, phone, email, postal_code, street, number, complement, neighborhood, city, state, patient_sharing_mode)
 VALUES 
-('c1111111-1111-1111-1111-111111111111', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Unidade São Paulo (Jardins - Matriz)', 'SP-JARDINS', true, '(11) 3284-9100', 'jardins@drnewtonmureb.com.br', 'Rua Bela Cintra', '2105', 'Jardins', 'São Paulo', 'SP', 'model_b'),
-('c2222222-2222-2222-2222-222222222222', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Unidade Rio de Janeiro (Ipanema)', 'RJ-IPANEMA', false, '(21) 2522-8400', 'ipanema@drnewtonmureb.com.br', 'Rua Visconde de Pirajá', '550', 'Ipanema', 'Rio de Janeiro', 'RJ', 'model_b')
+('c1111111-1111-1111-1111-111111111111', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Unidade Matriz Cabo Frio (Centro)', 'CF-CENTRO', true, '(22) 9908-9122', 'roseneco1@gmail.com', '28.905-000', 'Av. Júlia Kubitschek', '16', 'Sala 307 A - Edif. Premier Center', 'Centro', 'Cabo Frio', 'RJ', 'model_b')
 ON CONFLICT DO NOTHING;
 
--- 5. Especialidades
+-- 5. Especialidade Médica Exclusiva
 INSERT INTO public.specialties (id, organization_id, name, council_type, description)
 VALUES 
-('e1111111-1111-1111-1111-111111111111', 'a0000000-0000-0000-0000-000000000001', 'Medicina Ortomolecular & Metabologia', 'CRM', 'Modulação bioquímica e estresse oxidativo.'),
-('e2222222-2222-2222-2222-222222222222', 'a0000000-0000-0000-0000-000000000001', 'Fisioterapia Metabólica & Lipedema', 'CREFITO', 'Manejo descongestivo de lipedema e prevenção de sarcopenia.')
+('e1111111-1111-1111-1111-111111111111', 'a0000000-0000-0000-0000-000000000001', 'Clínica Médica, Endocrinologia e Metabologia', 'CRM', 'Atendimento médico ambulatorial em clínica médica, endocrinologia, metabologia, modulação hormonal bioidêntica e longevidade saudável.')
 ON CONFLICT DO NOTHING;

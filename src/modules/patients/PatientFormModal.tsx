@@ -50,7 +50,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const [socialName, setSocialName] = useState('');
   const [documentCpf, setDocumentCpf] = useState('');
   const [documentRg, setDocumentRg] = useState('');
-  const [documentRgIssuer, setDocumentRgIssuer] = useState('SSP/SP');
+  const [documentRgIssuer, setDocumentRgIssuer] = useState('DETRAN/RJ');
   const [birthDate, setBirthDate] = useState('1990-01-01');
   const [gender, setGender] = useState('Feminino');
   const [biologicalSex, setBiologicalSex] = useState<'M' | 'F' | 'outro'>('F');
@@ -58,7 +58,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const [maritalStatus, setMaritalStatus] = useState<'solteiro' | 'casado' | 'uniao_estavel' | 'divorciado' | 'viuvo' | 'outro'>('solteiro');
   const [profession, setProfession] = useState('');
   const [nationality, setNationality] = useState('Brasileira');
-  const [naturalness, setNaturalness] = useState('São Paulo/SP');
+  const [naturalness, setNaturalness] = useState('Cabo Frio/RJ');
 
   // 2. Contato e Endereço
   const [phone, setPhone] = useState('');
@@ -69,8 +69,8 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const [addressNumber, setAddressNumber] = useState('');
   const [complement, setComplement] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [city, setCity] = useState('São Paulo');
-  const [state, setState] = useState('SP');
+  const [city, setCity] = useState('Cabo Frio');
+  const [state, setState] = useState('RJ');
   const [isLoadingCep, setIsLoadingCep] = useState(false);
 
   // 3. Dados Clínicos e Triagem
@@ -114,7 +114,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setSocialName(existingPatient.socialName || '');
       setDocumentCpf(existingPatient.documentCpf || '');
       setDocumentRg(existingPatient.documentRg || '');
-      setDocumentRgIssuer(existingPatient.documentRgIssuer || 'SSP/SP');
+      setDocumentRgIssuer(existingPatient.documentRgIssuer || 'DETRAN/RJ');
       setBirthDate(existingPatient.birthDate || '1990-01-01');
       setGender(existingPatient.gender || 'Feminino');
       setBiologicalSex(existingPatient.biologicalSex || 'F');
@@ -122,7 +122,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setMaritalStatus(existingPatient.maritalStatus || 'solteiro');
       setProfession(existingPatient.profession || '');
       setNationality(existingPatient.nationality || 'Brasileira');
-      setNaturalness(existingPatient.naturalness || 'São Paulo/SP');
+      setNaturalness(existingPatient.naturalness || 'Cabo Frio/RJ');
 
       setPhone(existingPatient.phone || '');
       setWhatsapp(existingPatient.whatsapp || '');
@@ -132,8 +132,8 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setAddressNumber(existingPatient.addressNumber || '');
       setComplement(existingPatient.complement || '');
       setNeighborhood(existingPatient.neighborhood || '');
-      setCity(existingPatient.city || 'São Paulo');
-      setState(existingPatient.state || 'SP');
+      setCity(existingPatient.city || 'Cabo Frio');
+      setState(existingPatient.state || 'RJ');
 
       setBloodType(existingPatient.bloodType || 'desconhecido');
       setWeightKg(existingPatient.weightKg ? existingPatient.weightKg.toString() : '');
@@ -168,7 +168,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setSocialName('');
       setDocumentCpf('');
       setDocumentRg('');
-      setDocumentRgIssuer('SSP/SP');
+      setDocumentRgIssuer('DETRAN/RJ');
       setBirthDate('1992-05-10');
       setGender('Feminino');
       setBiologicalSex('F');
@@ -183,8 +183,8 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setAddressNumber('');
       setComplement('');
       setNeighborhood('');
-      setCity('São Paulo');
-      setState('SP');
+      setCity('Cabo Frio');
+      setState('RJ');
       setBloodType('desconhecido');
       setWeightKg('');
       setHeightCm('');
@@ -616,7 +616,7 @@ export const PatientFormModal: React.FC<PatientFormModalProps> = ({
                     type="text"
                     value={naturalness}
                     onChange={(e) => setNaturalness(e.target.value)}
-                    placeholder="Ex: São Paulo/SP"
+                    placeholder="Ex: Cabo Frio/RJ"
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>

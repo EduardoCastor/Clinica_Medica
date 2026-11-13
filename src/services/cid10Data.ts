@@ -1,6 +1,6 @@
 /**
  * Base de dados de CIDs frequentes em atenção ambulatorial, medicina preventiva,
- * ortomolecular, clínica geral, cardiologia e fisioterapia com busca rápida.
+ * endocrinologia, metabologia e clínica médica com busca rápida.
  */
 
 export interface Cid10Item {
@@ -24,9 +24,9 @@ export const COMMON_CID10: Cid10Item[] = [
   { code: 'E55.9', description: 'Deficiência de vitamina D não especificada', category: 'Nutrologia' },
   { code: 'E53.8', description: 'Deficiência de outras vitaminas do complexo B (Vitamina B12)', category: 'Nutrologia' },
   { code: 'E61.1', description: 'Deficiência de ferro / Anemia ferropriva subclínica', category: 'Nutrologia' },
-  { code: 'E87.8', description: 'Outros transtornos do equilíbrio hidroeletrolítico e ácido-básico', category: 'Ortomolecular' },
+  { code: 'E87.8', description: 'Outros transtornos do equilíbrio hidroeletrolítico e ácido-básico', category: 'Metabologia' },
   { code: 'R63.0', description: 'Anorexia e perda involuntária de apetite', category: 'Sintomas Gerais' },
-  { code: 'M62.5', description: 'Atrofia e fraqueza muscular não classificada (Sarcopenia)', category: 'Fisioterapia & Metabologia' },
+  { code: 'M62.5', description: 'Atrofia e fraqueza muscular não classificada (Sarcopenia)', category: 'Endocrinologia & Metabologia' },
 
   // Aparelho circulatório / cardiovascular
   { code: 'I10', description: 'Hipertensão essencial (primária)', category: 'Cardiologia' },

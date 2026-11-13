@@ -12,14 +12,13 @@ import {
   ShieldCheck, 
   Sparkles, 
   ArrowRight, 
-  MessageSquare,
-  ChevronDown,
   X,
   User
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { WebsiteConfig, ColorPalette, Appointment } from '../../types';
 import { PatientPortal } from '../patient-portal/PatientPortal';
+import { ClinicBrandLogo, CLINIC_OFFICIAL_DATA } from '../../components/ClinicBrandLogo';
 
 interface ClinicWebsitePreviewProps {
   onBackToPanel?: () => void;
@@ -130,7 +129,12 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
     const service = services.find(s => s.id === selectedServiceId);
     const branch = branches.find(b => b.id === selectedBranchId);
 
-    // Create or find patient
+    const durationMins = service?.durationMinutes || 50;
+    const [hoursStr, minsStr] = selectedTime.split(':');
+    const totalEndMins = Number(hoursStr) * 60 + Number(minsStr) + durationMins;
+    const endHour = String(Math.floor(totalEndMins / 60) % 24).padStart(2, '0');
+    const endMin = String(totalEndMins % 60).padStart(2, '0');
+
     const newApt: Appointment = {
       id: `apt_online_${Date.now()}`,
       organizationId: 'org_mureb_01',
@@ -139,11 +143,11 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
       patientName,
       patientPhone,
       professionalId: selectedProfessionalId,
-      professionalName: professional?.fullName || 'Dr. Newton Mureb',
+      professionalName: professional?.fullName || CLINIC_OFFICIAL_DATA.physicianName,
       serviceId: selectedServiceId,
       serviceName: service?.name || 'Consulta Médica',
       startTime: `${selectedDate}T${selectedTime}:00.000Z`,
-      endTime: `${selectedDate}T${selectedTime === '14:00' ? '15:00' : '11:00'}:00.000Z`,
+      endTime: `${selectedDate}T${endHour}:${endMin}:00.000Z`,
       status: 'scheduled',
       appointmentType: 'presencial',
       notes: `Solicitação realizada via Site Institucional (${config.paletteName}). Telefone: ${patientPhone}`,
@@ -216,26 +220,54 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
         <div className="max-w-6xl mx-auto px-6 h-18 flex items-center justify-between gap-8">
           
           {/* Brand */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shadow-xs ${theme.primary}`}>
-              <Activity className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-base font-bold tracking-tight block leading-tight">
-                Dr. Newton Mureb
-              </span>
-              <span className="text-[10px] text-slate-500 block">
-                Medicina Ortomolecular & Saúde Metabólica
-              </span>
-            </div>
+          <div className="shrink-0">
+            <ClinicBrandLogo
+              variant={config.paletteName === 'elegancia' ? 'dark' : 'light'}
+              layout="horizontal"
+              size="sm"
+              showSubtitle
+              subtitle={CLINIC_OFFICIAL_DATA.specialty}
+            />
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-600">
-            <a href="#filosofia" className="hover:text-slate-900 transition whitespace-nowrap">Filosofia Clínica</a>
-            <a href="#especialidades" className="hover:text-slate-900 transition whitespace-nowrap">Áreas de Atuação</a>
-            <a href="#corpo-clinico" className="hover:text-slate-900 transition whitespace-nowrap">Corpo Clínico</a>
-            <a href="#unidades" className="hover:text-slate-900 transition whitespace-nowrap">Unidades SP & RJ</a>
+          <nav
+            className={`hidden md:flex items-center gap-7 text-xs font-semibold ${
+              config.paletteName === 'elegancia' ? 'text-stone-300' : 'text-slate-600'
+            }`}
+          >
+            <a
+              href="#filosofia"
+              className={`transition whitespace-nowrap ${
+                config.paletteName === 'elegancia' ? 'hover:text-[#E5C158]' : 'hover:text-slate-900'
+              }`}
+            >
+              Sobre & Filosofia
+            </a>
+            <a
+              href="#tratamentos"
+              className={`transition whitespace-nowrap ${
+                config.paletteName === 'elegancia' ? 'hover:text-[#E5C158]' : 'hover:text-slate-900'
+              }`}
+            >
+              Tratamentos
+            </a>
+            <a
+              href="#corpo-clinico"
+              className={`transition whitespace-nowrap ${
+                config.paletteName === 'elegancia' ? 'hover:text-[#E5C158]' : 'hover:text-slate-900'
+              }`}
+            >
+              Dr. Newton Mureb
+            </a>
+            <a
+              href="#unidades"
+              className={`transition whitespace-nowrap ${
+                config.paletteName === 'elegancia' ? 'hover:text-[#E5C158]' : 'hover:text-slate-900'
+              }`}
+            >
+              Localização Cabo Frio
+            </a>
           </nav>
 
           {/* Action CTAs */}
@@ -268,9 +300,9 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
       <section className={`relative text-white py-24 sm:py-32 px-6 bg-gradient-to-b ${theme.heroGradient} overflow-hidden`}>
         <div className="max-w-5xl mx-auto space-y-6 relative z-10 text-center sm:text-left">
           
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white backdrop-blur-xs border border-white/10">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>São Paulo (Jardins) & Rio de Janeiro (Ipanema)</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-[#E5C158] backdrop-blur-xs border border-[#D4AF37]/30">
+            <Sparkles className="w-3.5 h-3.5 text-[#E5C158]" />
+            <span>Cabo Frio - RJ · Assessoria WhatsApp 24/7: {CLINIC_OFFICIAL_DATA.whatsapp}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight max-w-3xl">
@@ -304,17 +336,17 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
         </div>
       </section>
 
-      {/* Filosofia & Abordagem Médica (Requisito 14) */}
+      {/* Filosofia & Abordagem Médica */}
       <section id="filosofia" className="py-20 px-6 max-w-5xl mx-auto space-y-12">
         <div className="text-center max-w-3xl mx-auto space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Medicina Ortomolecular com Base Científica
+          <span className="text-xs font-bold uppercase tracking-wider text-[#9A7B2C]">
+            {CLINIC_OFFICIAL_DATA.specialty}
           </span>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            Promover a saúde celular integral, e não apenas remediar sintomas.
+            Mais de 40 anos de experiência médica dedicados à saúde, bem-estar e longevidade.
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            {config.aboutText}
+            {config.aboutText || CLINIC_OFFICIAL_DATA.bio}
           </p>
         </div>
 
@@ -324,9 +356,9 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-xs ${theme.primary}`}>
               <Stethoscope className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-slate-900 text-sm">Bioquímica e Metabologia</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Endocrinologia & Modulação Hormonal</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Mapeamento de desbalanços hormonais, estresse oxidativo celular e carências nutricionais por meio de exames laboratoriais especializados.
+              Investigação criteriosa das causas subjacentes dos distúrbios hormonais, tireoidianos e metabólicos com acompanhamento semanal individualizado.
             </p>
           </div>
 
@@ -334,9 +366,9 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-xs ${theme.primary}`}>
               <Activity className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-slate-900 text-sm">Lipedema & Saúde Vascular</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Emagrecimento & Lipedema</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Diagnóstico e manejo conservador do tecido adiposo doente, unindo modulação biológica anti-inflamatória e fisioterapia descongestiva especializada.
+              Protocolos médicos para emagrecimento saudável, tratamentos injetáveis com análogos de GLP-1/GIP, manejo clínico do lipedema e avaliação por bioimpedância.
             </p>
           </div>
 
@@ -344,9 +376,9 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-xs ${theme.primary}`}>
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-slate-900 text-sm">Combate à Sarcopenia</h3>
+            <h3 className="font-bold text-slate-900 text-sm">Longevidade & Assessoria 24/7</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Preservação rigorosa da massa muscular magra como órgão endócrino vital para a longevidade ativa, mobilidade e taxa metabólica.
+              Acompanhamento contínuo em soroterapia, hipertrofia, pós-bariátrica, fibromialgia e SOP com assessoria médica próxima via WhatsApp ({CLINIC_OFFICIAL_DATA.whatsapp}).
             </p>
           </div>
         </div>
@@ -363,43 +395,108 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
         </div>
       </section>
 
-      {/* Corpo Clínico Section */}
-      <section id="corpo-clinico" className="py-20 px-6 bg-slate-50 border-y border-slate-200">
-        <div className="max-w-5xl mx-auto space-y-12">
-          
-          <div className="text-center space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Especialistas Dedicados</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Nosso Corpo Clínico</h2>
+      {/* Tratamentos & Áreas de Atuação (12 Protocolos Oficiais) */}
+      <section id="tratamentos" className="py-20 px-6 bg-white border-t border-slate-200">
+        <div className="max-w-5xl mx-auto space-y-10">
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#9A7B2C]">
+              Áreas de Atuação Médica
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+              Tratamentos & Protocolos Especializados
+            </h2>
+            <p className="text-xs text-slate-500">
+              Atendimento individualizado presencial em Cabo Frio - RJ com acompanhamento clínico contínuo.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {professionals.map(p => (
-              <div key={p.id} className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-600 to-teal-500 text-white font-extrabold text-lg flex items-center justify-center shadow-xs">
-                    {p.fullName.split(' ').map(n => n[0]).slice(0, 2).join('')}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {services.filter(s => s.isActive).map((srv) => (
+              <div
+                key={srv.id}
+                className="p-5 bg-slate-50 rounded-2xl border border-slate-200 hover:border-[#D4AF37]/60 transition flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm leading-snug">{srv.name}</h3>
+                    <span className="text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0 tabular-nums">
+                      {srv.durationMinutes} min
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900">{p.fullName}</h3>
-                    <p className="text-xs font-semibold text-sky-700">{p.councilNumber}</p>
-                    <p className="text-[11px] text-slate-500">{p.specialtyName}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {srv.description || 'Avaliação e acompanhamento médico individualizado.'}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-medium text-slate-500">
+                    Consulta Presencial · Cabo Frio
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedServiceId(srv.id);
+                      setBookingSuccess(false);
+                      setBookingStep(1);
+                      setIsBookingOpen(true);
+                    }}
+                    className={`font-bold flex items-center gap-1 ${theme.primaryText} hover:underline`}
+                  >
+                    <span>Agendar</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Corpo Clínico Section (Exclusivo Dr. Newton Mureb) */}
+      <section id="corpo-clinico" className="py-20 px-6 bg-slate-50 border-y border-slate-200">
+        <div className="max-w-4xl mx-auto space-y-10">
+          
+          <div className="text-center space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#9A7B2C]">Responsável Técnico & Corpo Clínico</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Atendimento Médico Direto</h2>
+          </div>
+
+          <div className="space-y-6">
+            {professionals.map(p => (
+              <div key={p.id} className="p-8 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <ClinicBrandLogo variant="dark" layout="horizontal" size="md" />
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <span className="inline-block px-3 py-1 rounded-full bg-[#1E2024] text-[#E5C158] text-xs font-bold border border-[#D4AF37]/40">
+                      {p.councilNumber || CLINIC_OFFICIAL_DATA.crm}
+                    </span>
+                    <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                      {p.specialtyName || CLINIC_OFFICIAL_DATA.specialty}
+                    </p>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {p.bio}
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  {p.bio || CLINIC_OFFICIAL_DATA.bio}
                 </p>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <span>Atendimento: São Paulo & Rio de Janeiro</span>
+                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#9A7B2C]" />
+                    <span>
+                      Atendimento Presencial: {CLINIC_OFFICIAL_DATA.city} - {CLINIC_OFFICIAL_DATA.state} · Assessoria 24/7 ({CLINIC_OFFICIAL_DATA.whatsapp})
+                    </span>
+                  </span>
                   <button
                     onClick={() => {
                       setSelectedProfessionalId(p.id);
+                      setBookingSuccess(false);
                       setIsBookingOpen(true);
                     }}
-                    className="font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"
+                    className={`px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${theme.primary}`}
                   >
-                    <span>Agendar</span>
+                    <span>Agendar Consulta</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -410,37 +507,43 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
         </div>
       </section>
 
-      {/* Unidades & Filiais */}
+      {/* Localização & Contato (Unidade Matriz Cabo Frio) */}
       <section id="unidades" className="py-20 px-6 max-w-5xl mx-auto space-y-10">
         <div className="text-center space-y-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Estrutura e Localização</span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Nossas Unidades</h2>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#9A7B2C]">Estrutura e Localização</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Consultório em Cabo Frio - RJ</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 ${branches.length > 1 ? 'sm:grid-cols-2' : 'max-w-2xl mx-auto'} gap-6`}>
           {branches.map(b => (
-            <div key={b.id} className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
+            <div key={b.id} className="p-6 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="font-bold text-base text-slate-900">{b.name}</h3>
                 {b.isHeadquarters && (
-                  <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
-                    Matriz
+                  <span className="text-[10px] font-bold text-[#9A7B2C] bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200 shrink-0">
+                    Sede Matriz
                   </span>
                 )}
               </div>
 
-              <div className="text-xs text-slate-600 space-y-1">
-                <p className="flex items-start gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                  <span>{b.street}, {b.number} {b.complement ? `(${b.complement})` : ''} - {b.neighborhood}, {b.city}/{b.state}</span>
+              <div className="text-xs text-slate-600 space-y-2">
+                <p className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-[#9A7B2C] mt-0.5 shrink-0" />
+                  <span>
+                    {b.street}, {b.number} {b.complement ? `(${b.complement})` : ''} · {b.neighborhood}, {b.city} - {b.state} · CEP {b.postalCode}
+                  </span>
                 </p>
-                <p className="flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>{b.phone} · WhatsApp: {b.whatsapp}</span>
+                <p className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-[#9A7B2C] shrink-0" />
+                  <span>Telefone: {b.phone} · WhatsApp 24/7: {b.whatsapp}</span>
                 </p>
-                <p className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span>{b.openingHours.weekday}</span>
+                <p className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#9A7B2C] shrink-0" />
+                  <span>{b.email || CLINIC_OFFICIAL_DATA.email}</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#9A7B2C] shrink-0" />
+                  <span>{b.openingHours.weekday}{b.openingHours.saturday ? ` | ${b.openingHours.saturday}` : ''}</span>
                 </p>
               </div>
 
@@ -448,11 +551,12 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
                 <button
                   onClick={() => {
                     setSelectedBranchId(b.id);
+                    setBookingSuccess(false);
                     setIsBookingOpen(true);
                   }}
-                  className={`w-full py-2 text-xs font-semibold rounded-xl text-center transition ${theme.primary}`}
+                  className={`w-full py-2.5 text-xs font-bold rounded-xl text-center transition ${theme.primary}`}
                 >
-                  Agendar Nesta Unidade
+                  Solicitar Agendamento em Cabo Frio
                 </button>
               </div>
             </div>
@@ -461,15 +565,23 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-950 text-white py-12 px-6 border-t border-slate-800 text-xs">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-slate-400">
-          <div>
-            <strong className="text-white block">{clinic.tradeName}</strong>
-            <p className="text-[11px] mt-1">CNPJ: {clinic.documentNumber} · Resp. Técnico: Dr. Newton Mureb (CRM 84.320/SP)</p>
+      <footer className="bg-[#17191C] text-white py-12 px-6 border-t border-[#D4AF37]/30 text-xs">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-slate-400">
+          <div className="space-y-1.5">
+            <strong className="text-[#E5C158] block text-sm">{clinic.legalName || CLINIC_OFFICIAL_DATA.legalName}</strong>
+            <p className="text-[11px] text-slate-300">
+              CNPJ: {clinic.documentNumber || CLINIC_OFFICIAL_DATA.cnpj} · Resp. Técnico: {CLINIC_OFFICIAL_DATA.physicianName} ({CLINIC_OFFICIAL_DATA.crm})
+            </p>
+            <p className="text-[10px] text-slate-400">
+              {CLINIC_OFFICIAL_DATA.street}, {CLINIC_OFFICIAL_DATA.number}, {CLINIC_OFFICIAL_DATA.complement} · {CLINIC_OFFICIAL_DATA.city} - {CLINIC_OFFICIAL_DATA.state} · CEP {CLINIC_OFFICIAL_DATA.cep}
+            </p>
+            <p className="text-[10px] text-slate-500">
+              CNAE 86.30-5-01 · {CLINIC_OFFICIAL_DATA.secondaryCnaes}
+            </p>
           </div>
-          <div className="text-center sm:text-right text-[11px] space-y-1">
-            <p>© {new Date().getFullYear()} Todos os direitos reservados.</p>
-            <p>Plataforma White-Label mantida por MedSync SaaS Clínico.</p>
+          <div className="text-left sm:text-right text-[11px] space-y-1">
+            <p>Tel: {CLINIC_OFFICIAL_DATA.phone} · WhatsApp 24/7: {CLINIC_OFFICIAL_DATA.whatsapp}</p>
+            <p>© {new Date().getFullYear()} {CLINIC_OFFICIAL_DATA.tradeName}. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
@@ -586,7 +698,7 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
                     <input
                       type="text"
                       required
-                      placeholder="Ex: Mariana Vasconcelos"
+                      placeholder="Ex: Ana Paula Ferreira"
                       value={patientName}
                       onChange={(e) => setPatientName(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -611,7 +723,7 @@ export const ClinicWebsitePreview: React.FC<ClinicWebsitePreviewProps> = ({ onBa
                       <input
                         type="text"
                         required
-                        placeholder="(11) 98765-4321"
+                        placeholder="(22) 99908-9122"
                         value={patientPhone}
                         onChange={(e) => setPatientPhone(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg"

@@ -42,7 +42,7 @@ export const ClinicSettings: React.FC = () => {
   const [isNewBranchOpen, setIsNewBranchOpen] = useState(false);
   const [branchName, setBranchName] = useState('');
   const [branchCity, setBranchCity] = useState('');
-  const [branchState, setBranchState] = useState('SP');
+  const [branchState, setBranchState] = useState('RJ');
   const [branchStreet, setBranchStreet] = useState('');
   const [branchNumber, setBranchNumber] = useState('');
   const [branchPhone, setBranchPhone] = useState('');
@@ -80,7 +80,7 @@ export const ClinicSettings: React.FC = () => {
       name: branchName,
       code: branchName.substring(0, 8).toUpperCase(),
       isHeadquarters: false,
-      documentNumber: '42.891.304/0003-55',
+      documentNumber: clinic.documentNumber || '55.937.470/0001-78',
       phone: branchPhone || clinic.phone,
       whatsapp: clinic.whatsapp,
       email: clinic.email,
@@ -116,7 +116,7 @@ export const ClinicSettings: React.FC = () => {
       organizationId: 'org_mureb_01',
       branchId: roomBranchId,
       name: roomName,
-      description: 'Consultório de atendimento médico / fisioterapêutico',
+      description: 'Consultório médico equipado para atendimento ambulatorial',
       color: '#0284c7',
       isActive: true,
     };
@@ -388,7 +388,7 @@ export const ClinicSettings: React.FC = () => {
                   </div>
 
                   <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Endereço exclusivo para médicos, fisioterapeutas, recepcionistas e administradores. 
+                    Endereço exclusivo para médicos, recepcionistas, equipe administrativa e gestores. 
                     Exige autenticação rigorosa e dá acesso ao prontuário eletrônico e faturamento.
                   </p>
                 </div>
@@ -463,7 +463,7 @@ export const ClinicSettings: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Unidade Campinas (Cambuí)"
+                  placeholder="Ex: Unidade Búzios (Centro)"
                   value={branchName}
                   onChange={(e) => setBranchName(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -476,7 +476,7 @@ export const ClinicSettings: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="Campinas"
+                    placeholder="Cabo Frio"
                     value={branchCity}
                     onChange={(e) => setBranchCity(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -499,7 +499,7 @@ export const ClinicSettings: React.FC = () => {
                   <label className="block font-semibold text-slate-700 mb-1">Rua / Avenida</label>
                   <input
                     type="text"
-                    placeholder="Av. José de Souza Campos"
+                    placeholder="Av. Júlia Kubitschek"
                     value={branchStreet}
                     onChange={(e) => setBranchStreet(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -509,7 +509,7 @@ export const ClinicSettings: React.FC = () => {
                   <label className="block font-semibold text-slate-700 mb-1">Número</label>
                   <input
                     type="text"
-                    placeholder="120"
+                    placeholder="16"
                     value={branchNumber}
                     onChange={(e) => setBranchNumber(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -521,7 +521,7 @@ export const ClinicSettings: React.FC = () => {
                 <label className="block font-semibold text-slate-700 mb-1">Telefone da Unidade</label>
                 <input
                   type="text"
-                  placeholder="(19) 3200-1100"
+                  placeholder="(22) 9908-9122"
                   value={branchPhone}
                   onChange={(e) => setBranchPhone(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"

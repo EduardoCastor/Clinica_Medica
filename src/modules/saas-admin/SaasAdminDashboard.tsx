@@ -287,8 +287,8 @@ export const SaasAdminDashboard: React.FC<SaasAdminDashboardProps> = ({ onSimula
             <tbody className="divide-y divide-slate-100">
               <tr className="hover:bg-slate-50">
                 <td className="py-3 px-4 font-bold text-slate-900">
-                  Instituto Dr. Newton Mureb
-                  <span className="block text-[11px] text-slate-400 font-normal">2 Filiais (SP e RJ) · 25 usuários</span>
+                  NEWTON MUREB CLINICA MEDICA LTDA
+                  <span className="block text-[11px] text-slate-400 font-normal">Unidade Matriz Cabo Frio (RJ) · CNPJ 55.937.470/0001-78</span>
                 </td>
                 <td className="py-3 px-4">
                   <span className="px-2 py-0.5 rounded font-semibold text-purple-700 bg-purple-50 border border-purple-200">
